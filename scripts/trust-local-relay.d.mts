@@ -23,7 +23,7 @@ export interface RelayTrustOptions {
   readonly home?: string;
   readonly wssPort?: number;
   readonly allowDownloadCertutil?: boolean;
-  readonly certutilPath?: string;
+  readonly certutilPath?: string | null;
 }
 
 export const CA_NICKNAME: string;

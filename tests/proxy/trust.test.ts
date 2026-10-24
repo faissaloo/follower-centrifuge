@@ -119,7 +119,13 @@ describe('relay trust installer', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-trust-fallback-'));
     try {
       expect(findFirefoxProfiles(home)).toHaveLength(2);
-      const result = installFirefoxRelayTrust({ rootDir: root, home, wssPort: 8788, allowDownloadCertutil: false });
+      const result = installFirefoxRelayTrust({
+        rootDir: root,
+        home,
+        wssPort: 8788,
+        allowDownloadCertutil: false,
+        certutilPath: null,
+      });
       expect(result.ok).toBe(true);
       expect(result.mode).toBe('override');
       for (const profile of profiles) {

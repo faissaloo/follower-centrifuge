@@ -12,25 +12,25 @@ const html = fs.readFileSync(path.join(process.cwd(), 'public', 'index.html'), '
 describe('public GitHub Pages landing page', () => {
   it('uses the Follower Centrifuge branding instead of the old fork page', () => {
     expect(html).toContain('Follower Centrifuge');
-    expect(html).toContain('Sort the follows.');
-    expect(html).toContain('Category-based list curation');
+    expect(html).toContain('ur follows,');
+    expect(html).toContain('both lists · dry run first');
     expect(html).not.toContain('Comic Neue');
     expect(html).not.toContain('Or use a Bookmarklet');
   });
 
   it('explains the keyless public build, API-key wizard and session-only storage', () => {
-    expect(html).toContain('Public build = keyless');
-    expect(html).toContain('The wizard asks for');
+    expect(html).toContain('this page ships keyless');
+    expect(html).toContain('the wizard asks for');
     expect(html).toContain('sessionStorage');
-    expect(html).toContain('No API keys in this public build');
+    expect(html).toContain('no api keys baked into this page');
   });
 
   it('explains the relay requirement and both removal directions', () => {
     expect(html).toContain('npm run proxy');
-    expect(html).toContain('local CA');
-    expect(html).toContain('remove followers-only accounts');
-    expect(html).toContain('TypeSafe Jev');
-    expect(html).toContain('DeepSeek');
+    expect(html).toContain('CA');
+    expect(html).toContain('remove followers');
+    expect(html).toContain('typesafe jev');
+    expect(html).toContain('deepseek');
     expect(html).toContain('dry run first');
   });
 

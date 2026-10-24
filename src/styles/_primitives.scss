@@ -1,0 +1,941 @@
+@use 'tokens' as *;
+
+// ---------------------------------------------------------------------------
+// Shared primitives — buttons, fields, badges, banners, progress, panels.
+// Tactile but restrained: controls are raised, fields are pressed-in, and the
+// only saturated colour anywhere is muted brass.
+// ---------------------------------------------------------------------------
+
+.iu {
+  // Buttons -----------------------------------------------------------------
+
+  .wa-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.45rem;
+    padding: 0.52rem 0.95rem;
+    border: 1px solid $line;
+    border-radius: $radius;
+    background: linear-gradient(180deg, $surface-raised 0%, $surface 100%);
+    color: $text;
+    font-family: $font-ui !important;
+    font-size: 0.83rem;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: $shadow-raise, inset 0 1px 0 $highlight;
+    transition:
+      transform $speed $ease,
+      box-shadow $speed $ease,
+      background $speed $ease,
+      border-color $speed $ease,
+      color $speed $ease,
+      opacity $speed $ease;
+
+    svg {
+      flex: 0 0 auto;
+      width: 1.02rem;
+      height: 1.02rem;
+      opacity: 0.85;
+    }
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: $line-strong;
+      background: linear-gradient(180deg, $surface-hover 0%, $surface-raised 100%);
+      box-shadow: $shadow-raised-hover, inset 0 1px 0 $highlight-strong;
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      background: linear-gradient(180deg, $surface 0%, $surface-raised 100%);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.42);
+    }
+
+    &:focus-visible {
+      @include focus-ring;
+    }
+
+    &:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: $shadow-raise;
+    }
+
+    &--primary {
+      border-color: rgba(214, 189, 82, 0.55);
+      background: linear-gradient(180deg, #e0c960 0%, $accent 52%, #b59d3e 100%);
+      color: $text-on-accent;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+      box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.32),
+        0 2px 4px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 0 rgba(60, 43, 16, 0.22);
+
+      svg {
+        opacity: 0.75;
+      }
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(180deg, #ecd77b 0%, $accent-hover 52%, #cdb44e 100%);
+        box-shadow:
+          0 12px 26px rgba(0, 0, 0, 0.34),
+          0 2px 5px rgba(0, 0, 0, 0.26),
+          inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      }
+
+      &:active:not(:disabled) {
+        background: linear-gradient(180deg, $accent 0%, #b59d3e 100%);
+        box-shadow: inset 0 2px 4px rgba(60, 43, 16, 0.34);
+      }
+    }
+
+    &--secondary {
+      border-color: rgba(214, 189, 82, 0.22);
+      background: linear-gradient(180deg, #282a20 0%, #20221a 100%);
+      color: #e8e2d0;
+
+      &:hover:not(:disabled) {
+        border-color: rgba(214, 189, 82, 0.4);
+      }
+    }
+
+    &--ghost {
+      border-color: transparent;
+      background: transparent;
+      color: $text-muted;
+      box-shadow: none;
+
+      svg {
+        opacity: 0.7;
+      }
+
+      &:hover:not(:disabled) {
+        background: rgba(236, 232, 216, 0.055);
+        border-color: transparent;
+        color: $text;
+        box-shadow: none;
+        transform: translateY(-1px);
+      }
+
+      &:active:not(:disabled) {
+        background: rgba(0, 0, 0, 0.18);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+        transform: translateY(0);
+      }
+    }
+
+    &--danger {
+      border-color: rgba(179, 87, 63, 0.5);
+      background: linear-gradient(180deg, #b96248 0%, $danger 55%, #9a4a35 100%);
+      color: #fbeee8;
+      text-shadow: 0 1px 0 rgba(60, 16, 10, 0.3);
+      box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.32),
+        0 2px 4px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 0 rgba(50, 12, 8, 0.24);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(180deg, #c77358 0%, $danger-hover 55%, #a04f38 100%);
+      }
+
+      &:active:not(:disabled) {
+        background: linear-gradient(180deg, $danger 0%, #9a4a35 100%);
+        box-shadow: inset 0 2px 4px rgba(40, 8, 5, 0.4);
+      }
+    }
+
+    &--danger-text {
+      border-color: transparent;
+      background: transparent;
+      color: #cf8a70;
+      box-shadow: none;
+
+      &:hover:not(:disabled) {
+        background: $danger-soft;
+        color: #e0a08a;
+        box-shadow: none;
+      }
+    }
+
+    &--icon {
+      width: 2.45rem;
+      min-width: 2.45rem;
+      padding: 0;
+      color: $text-muted;
+
+      svg {
+        width: 1.08rem;
+        height: 1.08rem;
+      }
+    }
+
+    &--large {
+      min-height: 2.95rem;
+      padding: 0.72rem 1.4rem;
+      border-radius: 14px;
+      font-size: 0.92rem;
+      letter-spacing: 0.01em;
+    }
+
+    &--small {
+      min-height: 1.95rem;
+      padding: 0.32rem 0.68rem;
+      border-radius: $radius-xs;
+      font-size: 0.75rem;
+      gap: 0.35rem;
+
+      svg {
+        width: 0.88rem;
+        height: 0.88rem;
+      }
+    }
+
+    &--block {
+      width: 100%;
+    }
+
+    &.wa-btn--quiet-link {
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      box-shadow: none;
+      color: $accent;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+
+      &:hover:not(:disabled) {
+        color: $accent-hover;
+        transform: none;
+        box-shadow: none;
+        background: none;
+      }
+    }
+  }
+
+  // Chip / pill button (row-level "Protect") ---------------------------------
+
+  .wa-btn--chip {
+    min-height: 1.9rem;
+    padding: 0.28rem 0.68rem;
+    border-radius: 999px;
+    border-color: $line;
+    background: rgba(255, 255, 255, 0.028);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: $text-muted;
+
+    &:hover:not(:disabled) {
+      color: $text;
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    &.wa-btn--chip-active {
+      border-color: $secondary-line;
+      background: $secondary-soft;
+      color: $secondary;
+
+      &:hover:not(:disabled) {
+        background: rgba(151, 169, 124, 0.2);
+        color: #aebfa0;
+      }
+    }
+  }
+
+  // Fields ------------------------------------------------------------------
+
+  .wa-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+
+  .wa-field__label {
+    color: $text-muted;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .wa-field__control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .wa-field__unit {
+    color: $text-faint;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .wa-field__hint {
+    color: $text-faint;
+    font-size: 0.73rem;
+    line-height: 1.5;
+  }
+
+  .wa-field__error {
+    color: #cf8a70;
+    font-size: 0.73rem;
+    line-height: 1.45;
+  }
+
+  .wa-input,
+  .wa-select,
+  .wa-search,
+  .wa-textarea {
+    width: 100%;
+    min-height: 2.4rem;
+    padding: 0.5rem 0.72rem;
+    border: 1px solid $line-soft;
+    border-radius: $radius-sm;
+    background: $surface-well;
+    color: $text;
+    font-family: $font-ui !important;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    box-shadow: $shadow-inset;
+    transition:
+      border-color $speed $ease,
+      box-shadow $speed $ease,
+      background $speed $ease;
+
+    &::placeholder {
+      color: $text-faint;
+      opacity: 0.85;
+    }
+
+    &:hover:not(:disabled) {
+      border-color: $line-strong;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $accent-line;
+      background: #191a13;
+      box-shadow: $shadow-inset, 0 0 0 3px rgba(214, 189, 82, 0.13);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &[aria-invalid='true'] {
+      border-color: $danger-line;
+      box-shadow: $shadow-inset, 0 0 0 3px rgba(179, 87, 63, 0.12);
+    }
+  }
+
+  .wa-textarea {
+    min-height: 5.2rem;
+    resize: vertical;
+  }
+
+  .wa-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1.5 1.5 6 6l4.5-4.5' fill='none' stroke='%23a8a39a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 0.7rem;
+
+    option {
+      background: $surface;
+      color: $text;
+    }
+  }
+
+  .wa-search {
+    min-height: 2.3rem;
+    border-radius: 999px;
+    padding-left: 0.95rem;
+
+    // Hide WebKit's native clear affordance so the field stays typographic.
+    &::-webkit-search-cancel-button {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+  }
+
+  // Checkboxes & toggles ----------------------------------------------------
+
+  .wa-checkbox,
+  .wa-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: $text-muted;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    user-select: none;
+
+    input[type='checkbox'],
+    input[type='radio'] {
+      position: relative;
+      flex: 0 0 auto;
+      width: 1.12rem;
+      height: 1.12rem;
+      margin: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 1px solid $line-strong;
+      border-radius: 5px;
+      background: $surface-well;
+      box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      transition:
+        background $speed $ease,
+        border-color $speed $ease,
+        box-shadow $speed $ease;
+
+      &:hover:not(:disabled) {
+        border-color: rgba(214, 189, 82, 0.45);
+      }
+
+      &:checked {
+        border-color: rgba(214, 189, 82, 0.62);
+        background: linear-gradient(180deg, #e0c960, $accent);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+
+      &:checked::after {
+        content: '';
+        position: absolute;
+        left: 0.36rem;
+        top: 0.14rem;
+        width: 0.3rem;
+        height: 0.58rem;
+        border: solid $text-on-accent;
+        border-width: 0 2px 2px 0;
+        transform: rotate(42deg);
+      }
+
+      &:indeterminate {
+        border-color: rgba(214, 189, 82, 0.55);
+        background: linear-gradient(180deg, #e0c960, $accent);
+      }
+
+      &:indeterminate::after {
+        content: '';
+        position: absolute;
+        left: 0.22rem;
+        top: 0.46rem;
+        width: 0.56rem;
+        height: 2px;
+        border-radius: 2px;
+        background: $text-on-accent;
+      }
+
+      &:focus-visible {
+        @include focus-ring;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+
+    input[type='radio'] {
+      border-radius: 50%;
+
+      &:checked {
+        background: radial-gradient(circle at center, $text-on-accent 0 0.2rem, transparent 0.22rem), linear-gradient(180deg, #e0c960, $accent);
+      }
+
+      &:checked::after {
+        display: none;
+      }
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  // Badges ------------------------------------------------------------------
+
+  .wa-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.16rem 0.52rem;
+    border: 1px solid $line;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.032);
+    color: $text-muted;
+    font-family: $font-ui !important;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    white-space: nowrap;
+
+    &--rel-following {
+      border-color: rgba(169, 194, 155, 0.22);
+      background: rgba(169, 194, 155, 0.08);
+      color: #b4c7a7;
+    }
+
+    &--rel-follower {
+      border-color: rgba(236, 232, 216, 0.09);
+      color: $text-faint;
+    }
+
+    &--rel-mutual {
+      border-color: $accent-line;
+      background: $accent-soft;
+      color: #d8c27a;
+    }
+
+    &--private {
+      border-color: rgba(236, 232, 216, 0.1);
+      color: $text-faint;
+    }
+
+    &--verified {
+      border-color: rgba(169, 194, 155, 0.24);
+      color: $secondary;
+    }
+
+    &--demo {
+      border-color: $secondary-line;
+      background: $secondary-soft;
+      color: $secondary;
+      letter-spacing: 0.09em;
+    }
+
+    // Classifier categories (always paired with the visible category text).
+    &--cat-female {
+      border-color: rgba(201, 147, 95, 0.34);
+      background: rgba(201, 147, 95, 0.1);
+      color: $cat-female;
+    }
+
+    &--cat-male {
+      border-color: rgba(143, 163, 184, 0.32);
+      background: rgba(143, 163, 184, 0.1);
+      color: $cat-male;
+    }
+
+    &--cat-machine {
+      border-color: rgba(168, 196, 143, 0.32);
+      background: rgba(168, 196, 143, 0.1);
+      color: $cat-machine;
+    }
+
+    &--cat-organization {
+      border-color: rgba(160, 138, 106, 0.34);
+      background: rgba(160, 138, 106, 0.1);
+      color: $cat-organization;
+    }
+
+    &--cat-ambiguous {
+      border-color: rgba(203, 194, 168, 0.3);
+      background: rgba(203, 194, 168, 0.09);
+      color: $cat-ambiguous;
+    }
+  }
+
+  // Mode badge (dry-run vs live) -------------------------------------------
+
+  .wa-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.22rem 0.6rem;
+    border: 1px solid $line;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03);
+    font-family: $font-ui !important;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    &::before {
+      content: '';
+      width: 0.4rem;
+      height: 0.4rem;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.8;
+    }
+
+    &--dry {
+      border-color: rgba(169, 194, 155, 0.28);
+      background: rgba(169, 194, 155, 0.08);
+      color: $secondary;
+    }
+
+    &--live {
+      border-color: $danger-line;
+      background: $danger-soft;
+      color: #d18d78;
+    }
+  }
+
+  // Banners -----------------------------------------------------------------
+
+  .wa-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.75rem 0.95rem;
+    border: 1px solid $line;
+    border-radius: $radius;
+    background: rgba(255, 255, 255, 0.028);
+    color: $text-muted;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+    svg {
+      flex: 0 0 auto;
+      width: 1rem;
+      height: 1rem;
+      margin-top: 0.12rem;
+      opacity: 0.85;
+    }
+
+    strong {
+      display: inline-block;
+      margin-bottom: 0.1rem;
+      color: $text;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0.15rem 0 0;
+    }
+
+    &--warning,
+    &--live {
+      border-color: $danger-line;
+      background: $danger-soft;
+      color: #d3a294;
+
+      svg {
+        color: #cf8a70;
+      }
+    }
+
+    &--info {
+      border-color: $line-strong;
+      background: rgba(255, 255, 255, 0.03);
+      color: $text-muted;
+    }
+
+    &--demo {
+      border-color: $secondary-line;
+      background: $secondary-soft;
+      color: #b4c7a7;
+    }
+
+    &--dry {
+      border-color: rgba(169, 194, 155, 0.26);
+      background: rgba(169, 194, 155, 0.07);
+      color: #b4c7a7;
+    }
+  }
+
+  .wa-notice {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid $line-soft;
+    border-radius: $radius-sm;
+    background: $surface-well;
+    color: $text-muted;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    box-shadow: $shadow-inset;
+
+    strong {
+      color: $text;
+    }
+  }
+
+  // Progress ----------------------------------------------------------------
+
+  .wa-progress {
+    position: relative;
+    width: 100%;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background-color: $surface-well;
+    background-image: repeating-linear-gradient(90deg, rgba(236, 232, 216, 0.09) 0 1px, transparent 1px 6px);
+    box-shadow: $shadow-inset;
+
+    &__fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #8f7a33 0%, $accent 60%, $accent-hover 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      transition: width $speed-slow $ease;
+    }
+
+    &--large {
+      height: 0.65rem;
+    }
+
+    &--dry {
+      .wa-progress__fill {
+        background: linear-gradient(90deg, #718a63 0%, $info 60%, #c2d1b4 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      }
+    }
+
+    &--live {
+      .wa-progress__fill {
+        background: linear-gradient(90deg, #8a4433 0%, $danger 60%, $danger-hover 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+
+  // Panels ------------------------------------------------------------------
+
+  .wa-panel {
+    padding: 1.15rem 1.2rem;
+    border: 1px solid $line;
+    border-radius: $radius-lg;
+    background-color: $surface;
+    background-image:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.022) 0%, rgba(0, 0, 0, 0.04) 100%),
+      repeating-linear-gradient(0deg, rgba(236, 232, 216, 0.014) 0 1px, transparent 1px 3px);
+    box-shadow: $shadow-card-sm, inset 0 1px 0 $highlight;
+
+    &__title {
+      margin-bottom: 0.85rem;
+      color: $text;
+      font-family: $font-display !important;
+      font-size: 1.02rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
+    }
+
+    &__meta {
+      margin-top: 0.5rem;
+      color: $text-faint;
+      font-size: 0.73rem;
+      line-height: 1.5;
+
+      &--locked {
+        color: $text-faint;
+      }
+
+      &--danger {
+        color: #c08d7a;
+      }
+    }
+  }
+
+  .wa-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    dt {
+      @include label-caps;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+    }
+
+    dd {
+      color: $text;
+      font-family: $font-display !important;
+      font-size: 1.42rem;
+      font-weight: 600;
+      line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .wa-empty {
+    padding: 2.4rem 1.2rem;
+    border: 1px dashed rgba(236, 232, 216, 0.12);
+    border-radius: $radius-lg;
+    color: $text-faint;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  // Confidence meter --------------------------------------------------------
+
+  // Dosimeter-style confidence readout: a row of engraved ticks that light up
+  // as the needle moves. Purely decorative — the numeric label carries meaning.
+  .wa-confidence {
+    display: block;
+    width: 100%;
+    max-width: 9rem;
+    height: 0.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(236, 232, 216, 0.05);
+    border-radius: 2px;
+    background-color: $surface-well;
+    background-image: repeating-linear-gradient(90deg, rgba(236, 232, 216, 0.11) 0 1px, transparent 1px 4px);
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+
+    &__fill {
+      display: block;
+      height: 100%;
+      border-radius: 1px;
+      background: rgba(236, 232, 216, 0.32);
+      transition: width $speed-slow $ease;
+      -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 4px);
+      mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 4px);
+    }
+
+    &--female,
+    &--woman {
+      .wa-confidence__fill {
+        background: linear-gradient(90deg, #8f6a3f, $cat-female-fill);
+      }
+    }
+
+    &--male,
+    &--man {
+      .wa-confidence__fill {
+        background: linear-gradient(90deg, #6d8299, $cat-male-fill);
+      }
+    }
+
+    &--machine {
+      .wa-confidence__fill {
+        background: linear-gradient(90deg, #77945f, $cat-machine-fill);
+      }
+    }
+
+    &--organization {
+      .wa-confidence__fill {
+        background: linear-gradient(90deg, #7a6c52, $cat-organization-fill);
+      }
+    }
+
+    &--ambiguous {
+      .wa-confidence__fill {
+        background: linear-gradient(90deg, #9a917a, $cat-ambiguous-fill);
+      }
+    }
+
+    &--unknown {
+      .wa-confidence__fill {
+        background: rgba(236, 232, 216, 0.28);
+      }
+    }
+  }
+
+  // Pagination --------------------------------------------------------------
+
+  .wa-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid $line-soft;
+
+    .wa-btn {
+      width: 2.1rem;
+      min-width: 2.1rem;
+      min-height: 2.1rem;
+      padding: 0;
+      border-radius: $radius-sm;
+      font-size: 0.95rem;
+    }
+
+    &__label {
+      color: $text-muted;
+      font-size: 0.77rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    &__count {
+      margin-left: auto;
+      color: $text-faint;
+      font-size: 0.73rem;
+      letter-spacing: 0.01em;
+    }
+  }
+
+  // Status dot --------------------------------------------------------------
+
+  .wa-dot {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 0.46rem;
+    height: 0.46rem;
+    border-radius: 50%;
+    background: $text-faint;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+
+    // Modern classifier providers
+    &--typesafe {
+      background: $accent;
+    }
+
+    &--deepseek {
+      background: #8fa3b8;
+    }
+
+    // Legacy transport modes stay styled so old cached preferences don't break.
+    &--proxy {
+      background: $secondary;
+    }
+
+    &--direct {
+      background: $accent;
+    }
+
+    &--demo {
+      background: $text-faint;
+    }
+  }
+
+  .wa-provider {
+    color: $text;
+    font-weight: 600;
+
+    &--typesafe {
+      color: #e6d9a4;
+    }
+
+    &--deepseek {
+      color: #aebdcc;
+    }
+
+    &--proxy {
+      color: #c2d1b4;
+    }
+
+    &--demo {
+      color: $text-muted;
+    }
+  }
+}

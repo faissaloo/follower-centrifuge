@@ -4,3 +4,14 @@ dist/
 .idea/
 .DS_Store
 bun.lockb
+.npm-cache/
+coverage/
+.deepseek-key
+dist/women-audit-*
+.screenshots/
+.proxy-cert/
+.tools/
+.proxy.log
+.proxy.pid
+dist/critical-relations-*
+.typesafe-key

@@ -1,11 +1,8 @@
-import { UserNode } from "../model/user";
-import { DEFAULT_USERS_PER_SEARCH_CYCLE, INSTAGRAM_ASBD_ID, INSTAGRAM_UNFOLLOW_DOC_ID, INSTAGRAM_UNFOLLOW_FRIENDLY_NAME, INSTAGRAM_WEB_APP_ID, UNFOLLOWERS_PER_PAGE, WITHOUT_PROFILE_PICTURE_URL_IDS } from "../constants/constants";
-import { ScanningTab } from "../model/scanning-tab";
-import { ScanningFilter } from "../model/scanning-filter";
-import { UnfollowLogEntry } from "../model/unfollow-log-entry";
-import { UnfollowFilter } from "../model/unfollow-filter";
+/* eslint-disable @typescript-eslint/no-use-before-define -- legacy module order; function declarations are hoisted */
+import { UserNode } from '../model/user';
+import { DEFAULT_USERS_PER_SEARCH_CYCLE, INSTAGRAM_ASBD_ID, INSTAGRAM_UNFOLLOW_DOC_ID, INSTAGRAM_UNFOLLOW_FRIENDLY_NAME, INSTAGRAM_WEB_APP_ID } from '../constants/constants';
 
-export async function copyListToClipboard(nonFollowersList: readonly UserNode[], alertMessage: string = 'List copied to clipboard!'): Promise<void> {
+export async function copyListToClipboard(nonFollowersList: readonly UserNode[], alertMessage = 'List copied to clipboard!'): Promise<void> {
   const sortedList = [...nonFollowersList].sort((a, b) => (a.username > b.username ? 1 : -1));
 
   let output = '';
@@ -17,17 +14,13 @@ export async function copyListToClipboard(nonFollowersList: readonly UserNode[],
   alert(alertMessage);
 }
 
-export function exportToJSON(users: readonly UserNode[]) {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(users, null, 2));
-  const downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href",     dataStr);
-  downloadAnchorNode.setAttribute("download", "instagram_unfollowers.json");
-  document.body.appendChild(downloadAnchorNode);
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
+/** JSON payload for the export button: public account fields only, no guesses. */
+export function serializeUsersJson(users: readonly UserNode[]): string {
+  return JSON.stringify(users, null, 2);
 }
 
-export function exportToCSV(users: readonly UserNode[]) {
+/** CSV payload for the export button: public account fields only, no guesses. */
+export function serializeUsersCsv(users: readonly UserNode[]): string {
   const headers = ['id', 'username', 'full_name', 'is_verified', 'is_private', 'profile_pic_url'];
   const rows = users.map(user => [
     user.id,
@@ -35,106 +28,33 @@ export function exportToCSV(users: readonly UserNode[]) {
     `"${user.full_name.replace(/"/g, '""')}"`,
     user.is_verified,
     user.is_private,
-    user.profile_pic_url
+    user.profile_pic_url,
   ]);
-  
-  const csvContent = "data:text/csv;charset=utf-8," 
-    + headers.join(",") + "\n" 
-    + rows.map(e => e.join(",")).join("\n");
+  const lines = rows.map(row => row.join(','));
+  return lines.length === 0 ? headers.join(',') : headers.join(',') + '\n' + lines.join('\n');
+}
 
+export function exportToJSON(users: readonly UserNode[]) {
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(serializeUsersJson(users));
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute('href', dataStr);
+  downloadAnchorNode.setAttribute('download', 'instagram_unfollowers.json');
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+}
+
+export function exportToCSV(users: readonly UserNode[]) {
+  const csvContent = 'data:text/csv;charset=utf-8,' + serializeUsersCsv(users);
   const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "instagram_unfollowers.csv");
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', 'instagram_unfollowers.csv');
   document.body.appendChild(link);
   link.click();
   link.remove();
 }
 
-export function getMaxPage(nonFollowersList: readonly UserNode[]): number {
-  const pageCalc = Math.ceil(nonFollowersList.length / UNFOLLOWERS_PER_PAGE);
-  return pageCalc < 1 ? 1 : pageCalc;
-}
-
-export function getCurrentPageUnfollowers(nonFollowersList: readonly UserNode[], currentPage: number): readonly UserNode[] {
-  const sortedList = [...nonFollowersList].sort((a, b) => (a.username > b.username ? 1 : -1));
-  const startIndex = UNFOLLOWERS_PER_PAGE * (currentPage - 1);
-  return sortedList.slice(startIndex, startIndex + UNFOLLOWERS_PER_PAGE);
-}
-
-export function isWithoutProfilePicture(user: UserNode): boolean {
-  if (!user.profile_pic_url) {
-    return true;
-  }
-  return WITHOUT_PROFILE_PICTURE_URL_IDS.some(id => user.profile_pic_url.includes(id));
-}
-
-export function getUsersForDisplay(
-  results: readonly UserNode[],
-  whitelistedResults: readonly UserNode[],
-  currentTab: ScanningTab,
-  searchTerm: string,
-  filter: ScanningFilter,
-): readonly UserNode[] {
-  const users: UserNode[] = [];
-  for (const result of results) {
-    const isWhitelisted = whitelistedResults.find(user => user.id === result.id) !== undefined;
-    switch (currentTab) {
-      case "non_whitelisted":
-        if (isWhitelisted) {
-          continue;
-        }
-        break;
-      case "whitelisted":
-        if (!isWhitelisted) {
-          continue;
-        }
-        break;
-      default:
-        assertUnreachable(currentTab);
-    }
-    if (!filter.showPrivate && result.is_private) {
-      continue;
-    }
-    if (!filter.showVerified && result.is_verified) {
-      continue;
-    }
-    // Scans only keep accounts that don't follow back; this also hides
-    // mutuals stored by older cached scans.
-    if (result.follows_viewer) {
-      continue;
-    }
-    if (!filter.showWithOutProfilePicture && isWithoutProfilePicture(result)) {
-      continue;
-    }
-    const userMatchesSearchTerm =
-      result.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.full_name.toLowerCase().includes(searchTerm.toLowerCase());
-    if (searchTerm !== "" && !userMatchesSearchTerm) {
-      continue;
-    }
-    users.push(result);
-  }
-  return users;
-}
-
-export function getUnfollowLogForDisplay(log: readonly UnfollowLogEntry[], searchTerm: string, filter: UnfollowFilter) {
-  const entries: UnfollowLogEntry[] = [];
-  for (const entry of log) {
-    if (!filter.showSucceeded && entry.unfollowedSuccessfully) {
-      continue;
-    }
-    if (!filter.showFailed && !entry.unfollowedSuccessfully) {
-      continue;
-    }
-    const userMatchesSearchTerm = entry.user.username.toLowerCase().includes(searchTerm.toLowerCase());
-    if (searchTerm !== "" && !userMatchesSearchTerm) {
-      continue;
-    }
-    entries.push(entry);
-  }
-  return entries;
-}
 
 /**
  * When writing a switch-case with a finite number of cases, use this function in the
@@ -144,14 +64,32 @@ export function getUnfollowLogForDisplay(log: readonly UnfollowLogEntry[], searc
  * to the default clause and then add a new status to the state type, TS will complain
  * and force us to handle it as well, thus avoiding forgetting it.
  */
-export function assertUnreachable(_value: never): never {
-  throw new Error('Statement should be unreachable');
-}
 
 export function sleep(ms: number): Promise<any> {
   return new Promise(resolve => {
     setTimeout(resolve, ms);
   });
+}
+
+/** Timeout for Instagram REST/GraphQL requests, including the unfollow write. */
+export const INSTAGRAM_REQUEST_TIMEOUT_MS = 30000;
+
+/**
+ * fetch() with an AbortController timeout. A hung request must not leave the
+ * app (or a live unfollow queue) waiting forever.
+ */
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number = INSTAGRAM_REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function getCookie(name: string): string | null {
@@ -163,7 +101,7 @@ export function getCookie(name: string): string | null {
   return parts.pop()!.split(';').shift()!;
 }
 
-export type UnfollowOutcome = 'unfollowed' | 'failed' | 'blocked';
+export type UnfollowOutcome = 'unfollowed' | 'removed-follower' | 'failed' | 'blocked';
 
 export interface UnfollowResult {
   readonly outcome: UnfollowOutcome;
@@ -174,6 +112,8 @@ interface WebSessionTokens {
   readonly fbDtsg: string;
   readonly lsd: string;
   readonly revision?: string;
+  /** Instagram web build/rollout hash used as X-Instagram-AJAX. */
+  readonly ajax?: string;
 }
 
 let cachedWebSessionTokens: WebSessionTokens | null = null;
@@ -184,7 +124,14 @@ function tokensFromHtml(html: string): WebSessionTokens | null {
   if (!fbDtsg || !lsd) {
     return null;
   }
-  return { fbDtsg, lsd, revision: /"client_revision":(\d+)/.exec(html)?.[1] };
+  return {
+    fbDtsg,
+    lsd,
+    revision: /"client_revision":(\d+)/.exec(html)?.[1],
+    ajax:
+      /"rollout_hash":"([^"]+)"/.exec(html)?.[1] ??
+      /"server_revision":"([^"]+)"/.exec(html)?.[1],
+  };
 }
 
 // fb_dtsg and lsd are the per-session tokens instagram.com's GraphQL writes
@@ -200,7 +147,13 @@ async function getWebSessionTokens(): Promise<WebSessionTokens | null> {
       const fbDtsg = req('DTSGInitialData')?.token;
       const lsd = req('LSD')?.token;
       if (fbDtsg && lsd) {
-        cachedWebSessionTokens = { fbDtsg, lsd, revision: String(req('SiteData')?.client_revision ?? '') || undefined };
+        const siteData = req('SiteData');
+        cachedWebSessionTokens = {
+          fbDtsg,
+          lsd,
+          revision: String(siteData?.client_revision ?? '') || undefined,
+          ajax: String(siteData?.rollout_hash ?? siteData?.server_revision ?? '') || undefined,
+        };
         return cachedWebSessionTokens;
       }
     }
@@ -210,7 +163,7 @@ async function getWebSessionTokens(): Promise<WebSessionTokens | null> {
   cachedWebSessionTokens = tokensFromHtml(document.documentElement.innerHTML);
   if (cachedWebSessionTokens === null) {
     try {
-      const res = await fetch('https://www.instagram.com/', { credentials: 'same-origin' });
+      const res = await fetchWithTimeout('https://www.instagram.com/', { credentials: 'same-origin' });
       cachedWebSessionTokens = tokensFromHtml(await res.text());
     } catch (e) {
       console.warn('Could not load Instagram session tokens:', e);
@@ -265,6 +218,91 @@ export async function isStillFollowing(user: { readonly id: string; readonly use
   }
 }
 
+// Searches the viewer's followers list for one account. Returns null when the
+// lookup itself fails, so callers can fail closed.
+export async function isStillFollower(user: { readonly id: string; readonly username: string }): Promise<boolean | null> {
+  const viewerId = getCookie('ds_user_id');
+  if (viewerId === null) {
+    return null;
+  }
+  const url = `https://www.instagram.com/api/v1/friendships/${viewerId}/followers/?count=12&query=${encodeURIComponent(user.username)}&search_surface=follow_list_page`;
+  try {
+    const page = await fetchFriendshipsPageFromUrl(url);
+    const target = user.username.toLowerCase();
+    return (page.users ?? []).some(u => {
+      const { ids, username } = extractUserIdentities(u);
+      return ids.includes(user.id) || username === target;
+    });
+  } catch (e) {
+    console.warn(`Could not verify follower removal of ${user.username}:`, e);
+    return null;
+  }
+}
+
+// Removes one of the viewer's followers exactly like instagram.com's own
+// "Remove" button: POST the private friendships/remove_follower endpoint with
+// the page's fb_dtsg token in the form body. The endpoint answers with
+// `{"status":"ok"}`; a plain 2xx/HTML response is not accepted.
+export async function removeFollower(
+  user: { readonly id: string; readonly username: string },
+  csrftoken: string,
+): Promise<UnfollowResult> {
+  const tokens = await getWebSessionTokens();
+  if (tokens === null) {
+    return { outcome: 'failed', detail: 'could not find the fb_dtsg session tokens on the page' };
+  }
+  // Match the web app's form body: jazoest first, then fb_dtsg. The endpoint
+  // identifies the target in the URL, not in the body.
+  const body = new URLSearchParams();
+  body.set('jazoest', jazoest(tokens.fbDtsg));
+  body.set('fb_dtsg', tokens.fbDtsg);
+  const headers: Record<string, string> = {
+    'accept': '*/*',
+    'content-type': 'application/x-www-form-urlencoded',
+    'x-csrftoken': csrftoken,
+    'x-ig-app-id': INSTAGRAM_WEB_APP_ID,
+    // The web app sends a different ASBD id for follower removal than the
+    // GraphQL unfollow mutation.
+    'x-asbd-id': '359341',
+    'x-requested-with': 'XMLHttpRequest',
+  };
+  if (tokens.revision !== undefined && tokens.revision !== '') {
+    headers['x-instagram-ajax'] = tokens.ajax !== undefined && tokens.ajax !== '' ? tokens.ajax : tokens.revision;
+  }
+  const res = await fetchWithTimeout(
+    `https://www.instagram.com/api/v1/friendships/remove_follower/${encodeURIComponent(user.id)}/`,
+    {
+      headers,
+      method: 'POST',
+      credentials: 'same-origin',
+      body: body.toString(),
+    },
+  );
+  const text = await res.text().catch(() => '');
+  let data: any = null;
+  try {
+    data = JSON.parse(text.replace(/^for \(;;\);/, ''));
+  } catch {
+    // Reported below.
+  }
+  const errorText = JSON.stringify(data?.errors ?? data?.error ?? '') + ` ${data?.message ?? ''} ${data?.errorSummary ?? ''}`;
+  const isActionBlocked =
+    res.status === 429 ||
+    data?.spam === true ||
+    /feedback_required|checkpoint|action_blocked|try again later|rate limit/i.test(errorText);
+  if (isActionBlocked) {
+    return { outcome: 'blocked', detail: `HTTP ${res.status}: ${errorText.trim()}` };
+  }
+  const confirmed = res.ok && data !== null && data.status === 'ok' && !data.errors && !data.error;
+  if (!confirmed) {
+    const bodyText = data === null
+      ? `not JSON (content-type ${res.headers.get('content-type')}, redirected ${res.redirected}, final URL ${res.url}): ${text.slice(0, 300)}`
+      : JSON.stringify(data).slice(0, 1000);
+    return { outcome: 'failed', detail: `HTTP ${res.status}, body ${bodyText}` };
+  }
+  return { outcome: 'removed-follower', detail: 'confirmed' };
+}
+
 // Unfollows the way instagram.com's own Unfollow button does: the
 // usePolarisUnfollowMutation GraphQL query. It only counts once Instagram
 // confirms the follow is gone: either the response's friendship_status says
@@ -300,7 +338,7 @@ export async function unfollowUser(user: { readonly id: string; readonly usernam
     params.__spin_r = tokens.revision;
   }
 
-  const res = await fetch('https://www.instagram.com/api/graphql', {
+  const res = await fetchWithTimeout('https://www.instagram.com/api/graphql', {
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
       'x-csrftoken': csrftoken,
@@ -366,9 +404,9 @@ export type FriendshipsListKind = 'following' | 'followers';
  * error, so the old code had no way to detect the failure.
  */
 export interface RawFriendshipUser {
-  readonly pk: string | number;
+  readonly pk?: string | number;
   readonly pk_id?: string;
-  readonly username: string;
+  readonly username?: string;
   readonly full_name?: string;
   readonly profile_pic_url: string;
   readonly is_private?: boolean;
@@ -429,14 +467,14 @@ async function fetchFriendshipsPageFromUrl(url: string, headers?: Record<string,
       headers['X-CSRFToken'] = csrftoken;
     }
   }
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     credentials: 'same-origin',
     headers,
   });
   if (!response.ok) {
     throw new InstagramApiError(response.status, `Instagram returned HTTP ${response.status} for ${url}`);
   }
-  const data = (await response.json()) as any;
+  const data = (await response.json());
   if (data?.status === 'fail' || (!data?.users && data?.message)) {
     throw new InstagramApiError(response.status, data?.message || `Instagram returned failure status for ${url}`);
   }
@@ -445,8 +483,8 @@ async function fetchFriendshipsPageFromUrl(url: string, headers?: Record<string,
 
 export function rawFriendshipUserToUserNode(raw: RawFriendshipUser, followsViewer: boolean): UserNode {
   return {
-    id: String(raw.pk_id ?? raw.pk),
-    username: raw.username,
+    id: String(raw.pk_id ?? raw.pk ?? raw.username ?? ''),
+    username: raw.username ?? '',
     full_name: raw.full_name ?? '',
     profile_pic_url: raw.profile_pic_url,
     is_private: raw.is_private ?? false,
@@ -480,7 +518,7 @@ export function extractUserIdentities(user: RawFriendshipUser): {
   readonly username: string;
 } {
   const ids: string[] = [];
-  if (user.pk !== undefined && user.pk !== null) {
+  if (user.pk !== undefined) {
     const s = String(user.pk).trim();
     if (s) {
       ids.push(s);
@@ -498,7 +536,7 @@ export function extractUserIdentities(user: RawFriendshipUser): {
       ids.push(s);
     }
   }
-  const username = (user.username ?? "").trim().toLowerCase();
+  const username = (user.username ?? '').trim().toLowerCase();
   return { ids, username };
 }
 

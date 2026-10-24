@@ -1,0 +1,325 @@
+@use 'tokens' as *;
+
+// ---------------------------------------------------------------------------
+// Wizard — pick a category, dry run, nuke.
+//
+// Step 1 is a focused category picker: five tactile cards, a quiet classifier
+// status rail, and an intentionally understated "Advanced" escape hatch for the
+// machinery people rarely need (keys, pacing, whitelist).
+// ---------------------------------------------------------------------------
+
+.iu {
+  .wa-wizard {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 2.4vh, 1.7rem);
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: clamp(1.1rem, 3vh, 2rem) clamp(1.1rem, 4.5vw, 3.5rem) clamp(1.6rem, 3.4vh, 2.6rem);
+  }
+
+  .wa-wizard__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px dashed rgba($text, 0.12);
+  }
+
+  .wa-wizard__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(255px, 315px);
+    gap: clamp(1.4rem, 3.5vw, 3rem);
+    align-items: start;
+  }
+
+  .wa-wizard__main {
+    min-width: 0;
+  }
+
+  .wa-wizard__title {
+    margin: 0 0 0.7rem;
+    font-family: $font-display !important;
+    font-size: clamp(2.1rem, 4.2vw, 3.2rem);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .wa-wizard__lead {
+    max-width: 40rem;
+    margin: 0 0 1.35rem;
+    color: $text-muted;
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .wa-wizard__promise {
+    margin: 1.15rem 0 0;
+    padding: 0.7rem 0 0.7rem 0.85rem;
+    border-left: 2px solid rgba($accent-line, 0.7);
+    color: $text-muted;
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .wa-wizard__quiet {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .wa-wizard__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  // Category picker ---------------------------------------------------------
+
+  .wa-nuke-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+
+  .wa-nuke-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'dot label'
+      'dot hint';
+    gap: 0.1rem 0.7rem;
+    align-items: center;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid rgba($text, 0.09);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba($surface-raised, 0.92), rgba($surface, 0.96));
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.28),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    color: $text;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba($accent-line, 0.55);
+      box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.34),
+        0 2px 4px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow:
+        inset 2px 2px 5px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($accent, 0.55);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+
+  .wa-nuke-card__dot {
+    grid-area: dot;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: $text-faint;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  }
+
+  .wa-nuke-card__dot--female {
+    background: $cat-female;
+  }
+
+  .wa-nuke-card__dot--male {
+    background: $cat-male;
+  }
+
+  .wa-nuke-card__dot--machine {
+    background: $cat-machine;
+  }
+
+  .wa-nuke-card__dot--organization {
+    background: $cat-organization;
+  }
+
+  .wa-nuke-card__dot--ambiguous {
+    background: $cat-ambiguous;
+  }
+
+  .wa-nuke-card__label {
+    grid-area: label;
+    font-family: $font-display !important;
+    font-size: 1.06rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  .wa-nuke-card__hint {
+    grid-area: hint;
+    color: $text-faint;
+    font-size: 0.76rem;
+    line-height: 1.35;
+  }
+
+  .wa-classifier__detail--warning {
+    color: $danger;
+  }
+
+  .wa-classifier__advanced-hint {
+    color: $text-faint;
+    font-size: 0.7rem;
+    line-height: 1.3;
+  }
+
+  // Dry-run -> live confirmation banner -------------------------------------
+
+  .wa-nuke-ready {
+    width: min(100%, 760px);
+    margin: 0 auto 1rem;
+    padding: 1.1rem 1.25rem;
+    text-align: center;
+    border-color: rgba($danger, 0.45);
+    box-shadow:
+      0 16px 34px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+    .wa-panel__title {
+      margin-bottom: 0.45rem;
+    }
+
+    .wa-nuke-ready__action {
+      margin: 0.85rem auto 0.55rem;
+    }
+  }
+
+  .wa-executing__wizard {
+    align-self: center;
+    margin-bottom: 0.35rem;
+  }
+
+  .wa-review__wizard {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .wa-classifier__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  // Step indicator ----------------------------------------------------------
+
+  .wa-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.85rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .wa-steps__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.64rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .wa-steps__number {
+    display: inline-grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1px solid rgba($text, 0.18);
+    border-radius: 50%;
+    font-size: 0.62rem;
+    letter-spacing: 0;
+  }
+
+  .wa-steps__item--current {
+    color: $accent;
+
+    .wa-steps__number {
+      border-color: rgba($accent-line, 0.8);
+      background: rgba($accent, 0.12);
+      color: $accent-hover;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+  }
+
+  .wa-steps__item--done {
+    color: $secondary;
+
+    .wa-steps__number {
+      border-color: rgba($secondary-line, 0.6);
+      color: $secondary;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .wa-wizard__body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .wa-wizard__aside {
+      order: 2;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .wa-nuke-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+.wa-key-setup {
+  margin: 1rem 0 1.2rem;
+  border-color: $accent-line;
+
+  &__fields {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-top: 0.8rem;
+  }
+}

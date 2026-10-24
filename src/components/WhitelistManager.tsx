@@ -1,244 +1,241 @@
-import React, { useRef, useState } from "react";
-import { Typename, UserNode } from "../model/user";
-import { exportWhitelist, importWhitelist, clearWhitelist, mergeWhitelists } from "../utils/whitelist-manager";
-import { Language, t } from "../utils/i18n";
+import React, { useRef, useState } from 'react';
+import { Typename, UserNode } from '../model/user';
+import { exportWhitelist, importWhitelist, mergeWhitelists } from '../utils/whitelist-manager';
+import { Language, t } from '../utils/i18n';
 
-interface WhitelistManagerProps {
-  whitelistedUsers: readonly UserNode[];
-  onWhitelistUpdate: (users: readonly UserNode[]) => void;
-  lang: Language;
+export interface WhitelistManagerProps {
+  readonly whitelistedUsers: readonly UserNode[];
+  /** Called with the complete next protected list; persistence is App's job. */
+  readonly onWhitelistUpdate: (users: readonly UserNode[]) => void;
+  readonly lang: Language;
 }
 
+interface ManagerMessage {
+  readonly type: 'success' | 'error';
+  readonly text: string;
+}
+
+function avatarFor(username: string): string {
+  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(username)}&backgroundColor=0f172a,1f2937,312e81&fontFamily=Verdana`;
+}
+
+function pastedUser(username: string): UserNode {
+  const id = `pasted_${username}_${Date.now()}`;
+  return {
+    id,
+    username,
+    full_name: username,
+    profile_pic_url: avatarFor(username),
+    is_private: false,
+    is_verified: false,
+    followed_by_viewer: true,
+    follows_viewer: false,
+    requested_by_viewer: false,
+    reel: {
+      id,
+      expiring_at: 0,
+      has_pride_media: false,
+      latest_reel_media: 0,
+      seen: null,
+      owner: {
+        __typename: Typename.GraphUser,
+        id,
+        profile_pic_url: avatarFor(username),
+        username,
+      },
+    },
+  };
+}
+
+/**
+ * Management of the protected ("whitelist") accounts: export/import JSON,
+ * bulk-paste usernames and clear the list. All changes flow through
+ * `onWhitelistUpdate`, never touching storage directly.
+ */
 export const WhitelistManager = ({ whitelistedUsers, onWhitelistUpdate, lang }: WhitelistManagerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importMode, setImportMode] = useState<"replace" | "merge">("merge");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [importMode, setImportMode] = useState<'replace' | 'merge'>('merge');
+  const [message, setMessage] = useState<ManagerMessage | null>(null);
   const [showPasteArea, setShowPasteArea] = useState(false);
-  const [pasteText, setPasteText] = useState("");
+  const [pasteText, setPasteText] = useState('');
 
-  const handleExport = () => {
+  const handleExport = (): void => {
     exportWhitelist(whitelistedUsers);
-    setMessage({ type: "success", text: t(lang, "whitelistExported") });
-    setTimeout(() => setMessage(null), 3000);
+    setMessage({ type: 'success', text: t(lang, 'whitelistExported') });
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
+  const handleImportClick = (): void => {
+    if (fileInputRef.current !== null) {
+      fileInputRef.current.click();
+    }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0];
-    if (!file) return;
-
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = event.currentTarget.files === null ? undefined : event.currentTarget.files[0];
+    if (file === undefined) {
+      return;
+    }
     importWhitelist(
       file,
-      (importedUsers) => {
-        let finalUsers: readonly UserNode[];
-        
-        if (importMode === "merge") {
-          finalUsers = mergeWhitelists(whitelistedUsers, importedUsers);
-          const newUsersCount = finalUsers.length - whitelistedUsers.length;
-          setMessage({ 
-            type: "success", 
-            text: `Merged successfully! Added ${newUsersCount} new users (${importedUsers.length} imported, ${importedUsers.length - newUsersCount} duplicates skipped)` 
-          });
+      (importedUsers: readonly UserNode[]) => {
+        if (importMode === 'merge') {
+          const merged = mergeWhitelists(whitelistedUsers, importedUsers);
+          const newCount = merged.length - whitelistedUsers.length;
+          setMessage({ type: 'success', text: t(lang, 'whitelistImportMerged', newCount, importedUsers.length - newCount) });
+          onWhitelistUpdate(merged);
         } else {
-          finalUsers = importedUsers;
-          setMessage({ 
-            type: "success", 
-            text: `Replaced whitelist with ${importedUsers.length} users` 
-          });
+          setMessage({ type: 'success', text: t(lang, 'whitelistImportReplaced', importedUsers.length) });
+          onWhitelistUpdate(importedUsers);
         }
-        
-        onWhitelistUpdate(finalUsers);
-        setTimeout(() => setMessage(null), 5000);
       },
-      (errorMessage) => {
-        setMessage({ type: "error", text: errorMessage });
-        setTimeout(() => setMessage(null), 5000);
-      }
+      (errorMessage: string) => {
+        setMessage({ type: 'error', text: errorMessage });
+      },
     );
-
-    // Reset file input
-    event.currentTarget.value = "";
+    event.currentTarget.value = '';
   };
 
-  const handleClear = () => {
-    if (!confirm(t(lang, "clearWhitelistConfirm"))) {
+  const handleClear = (): void => {
+    if (!confirm(t(lang, 'clearWhitelistConfirm'))) {
       return;
     }
-    clearWhitelist();
     onWhitelistUpdate([]);
-    setMessage({ type: "success", text: t(lang, "whitelistCleared") });
-    setTimeout(() => setMessage(null), 3000);
+    setMessage({ type: 'success', text: t(lang, 'whitelistCleared') });
   };
 
-  const handlePasteSubmit = () => {
+  const handlePasteSubmit = (): void => {
     const rawTokens = pasteText
       .split(/[\s,;\n\r\t]+/)
-      .map(s => s.replace(/^@+/, '').trim().toLowerCase())
-      .filter(s => s.length > 0 && /^[a-zA-Z0-9._]+$/.test(s));
-
+      .map(token => token.replace(/^@+/, '').trim().toLowerCase())
+      .filter(token => token.length > 0 && /^[a-zA-Z0-9._]+$/.test(token));
     if (rawTokens.length === 0) {
-      setMessage({ type: "error", text: t(lang, "noValidUsernamesFound") });
-      setTimeout(() => setMessage(null), 4000);
+      setMessage({ type: 'error', text: t(lang, 'noValidUsernamesFound') });
       return;
     }
-
     const uniqueUsernames = Array.from(new Set(rawTokens));
-    const existingUsernames = new Set(whitelistedUsers.map(u => u.username.toLowerCase()));
-    const toAdd = uniqueUsernames.filter(u => !existingUsernames.has(u));
-
+    const existingUsernames = new Set(whitelistedUsers.map(user => user.username.toLowerCase()));
+    const toAdd = uniqueUsernames.filter(username => !existingUsernames.has(username));
     if (toAdd.length === 0) {
-      setMessage({ type: "success", text: t(lang, "pastedUsersAlreadyExist") });
-      setTimeout(() => setMessage(null), 4000);
+      setMessage({ type: 'success', text: t(lang, 'pastedUsersAlreadyExist') });
       return;
     }
-
-    const newNodes: UserNode[] = toAdd.map(username => ({
-      id: `pasted_${username}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      username,
-      full_name: username,
-      profile_pic_url: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(username)}&backgroundColor=0f172a,1f2937,312e81&fontFamily=Verdana`,
-      is_private: false,
-      is_verified: false,
-      followed_by_viewer: true,
-      follows_viewer: false,
-      requested_by_viewer: false,
-      reel: {
-        id: `pasted_${username}_${Date.now()}`,
-        expiring_at: 0,
-        has_pride_media: false,
-        latest_reel_media: 0,
-        seen: null,
-        owner: {
-          __typename: Typename.GraphUser,
-          id: `pasted_${username}_${Date.now()}`,
-          profile_pic_url: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(username)}`,
-          username,
-        },
-      },
-    }));
-
-    const updated = [...whitelistedUsers, ...newNodes];
-    onWhitelistUpdate(updated);
-    setPasteText("");
+    onWhitelistUpdate([...whitelistedUsers, ...toAdd.map(pastedUser)]);
+    setPasteText('');
     setShowPasteArea(false);
-    setMessage({
-      type: "success",
-      text: t(lang, "pastedUsersAdded", newNodes.length),
-    });
-    setTimeout(() => setMessage(null), 5000);
+    setMessage({ type: 'success', text: t(lang, 'pastedUsersAdded', toAdd.length) });
   };
 
+  const countLabel = `${String(whitelistedUsers.length)} ${
+    whitelistedUsers.length === 1 ? t(lang, 'userSingular') : t(lang, 'userPlural')
+  }`;
+
   return (
-    <div className="whitelist-manager">
-      <div className="whitelist-header">
-        <h4>{t(lang, "whitelistTitle")}</h4>
-        <span className="whitelist-count">
-          {whitelistedUsers.length} {whitelistedUsers.length === 1 ? t(lang, "userSingular") : t(lang, "userPlural")}
-        </span>
+    <div className='wa-whitelist'>
+      <div className='wa-whitelist__header'>
+        <h4>{t(lang, 'whitelistTitle')}</h4>
+        <span className='wa-whitelist__count'>{countLabel}</span>
       </div>
 
-      {message && (
-        <div className={`whitelist-message ${message.type === "error" ? "error" : "success"}`}>
+      <p className='wa-whitelist__description'>{t(lang, 'whitelistDescription')}</p>
+
+      {message !== null && (
+        <div className={`wa-whitelist__message wa-whitelist__message--${message.type}`} role='status'>
           {message.text}
         </div>
       )}
 
-      <div className="whitelist-actions">
-        <button 
-          className="btn btn-export" 
+      {whitelistedUsers.length === 0 && <p className='wa-whitelist__empty'>{t(lang, 'whitelistEmpty')}</p>}
+
+      <div className='wa-whitelist__actions'>
+        <button
+          type='button'
+          className='wa-btn wa-btn--ghost wa-btn--small'
           onClick={handleExport}
           disabled={whitelistedUsers.length === 0}
-          title={whitelistedUsers.length === 0 ? "No users" : t(lang, "exportWhitelist")}
+          title={whitelistedUsers.length === 0 ? t(lang, 'whitelistNoUsers') : t(lang, 'exportWhitelist')}
         >
-          📥 {t(lang, "exportWhitelist")}
+          {t(lang, 'exportWhitelist')}
         </button>
 
-        <div className="import-section">
-          <div className="import-mode">
-            <label>
+        <div className='wa-whitelist__import'>
+          <div className='wa-whitelist__modes' role='group' aria-label={t(lang, 'importWhitelist')}>
+            <label className='wa-radio'>
               <input
-                type="radio"
-                name="importMode"
-                value="merge"
-                checked={importMode === "merge"}
-                onChange={() => setImportMode("merge")}
+                type='radio'
+                name='importMode'
+                value='merge'
+                checked={importMode === 'merge'}
+                onChange={() => setImportMode('merge')}
               />
-              {t(lang, "mergeWhitelist")}
+              {t(lang, 'mergeWhitelist')}
             </label>
-            <label>
+            <label className='wa-radio'>
               <input
-                type="radio"
-                name="importMode"
-                value="replace"
-                checked={importMode === "replace"}
-                onChange={() => setImportMode("replace")}
+                type='radio'
+                name='importMode'
+                value='replace'
+                checked={importMode === 'replace'}
+                onChange={() => setImportMode('replace')}
               />
-              {t(lang, "replaceWhitelist")}
+              {t(lang, 'replaceWhitelist')}
             </label>
           </div>
 
-          <button 
-            className="btn btn-import" 
+          <button
+            type='button'
+            className='wa-btn wa-btn--ghost wa-btn--small'
             onClick={handleImportClick}
-            title={t(lang, "importWhitelist")}
+            title={t(lang, 'importWhitelist')}
           >
-            📤 {t(lang, "importWhitelist")}
+            {t(lang, 'importWhitelist')}
           </button>
           <input
             ref={fileInputRef}
-            type="file"
-            accept=".json"
+            type='file'
+            accept='.json'
             onChange={handleFileChange}
-            style={{ display: "none" }}
+            style={{ display: 'none' }}
+            aria-label={t(lang, 'importWhitelist')}
           />
         </div>
 
-        <button 
-          type="button"
-          className="btn btn-paste" 
+        <button
+          type='button'
+          className='wa-btn wa-btn--ghost wa-btn--small'
           onClick={() => setShowPasteArea(!showPasteArea)}
-          title={t(lang, "pasteWhitelist")}
+          title={t(lang, 'pasteWhitelist')}
         >
-          📋 {t(lang, "pasteWhitelist")}
+          {t(lang, 'pasteWhitelist')}
         </button>
 
-        <button 
-          className="btn btn-clear" 
+        <button
+          type='button'
+          className='wa-btn wa-btn--danger-text wa-btn--small'
           onClick={handleClear}
           disabled={whitelistedUsers.length === 0}
-          title={t(lang, "clearWhitelist")}
+          title={t(lang, 'clearWhitelist')}
         >
-          🗑️ {t(lang, "clearWhitelist")}
+          {t(lang, 'clearWhitelist')}
         </button>
       </div>
 
       {showPasteArea && (
-        <div className="paste-whitelist-box">
+        <div className='wa-whitelist__paste'>
           <textarea
-            className="paste-whitelist-textarea"
-            placeholder={t(lang, "pasteWhitelistPlaceholder")}
+            className='wa-textarea'
+            placeholder={t(lang, 'pasteWhitelistPlaceholder')}
+            aria-label={t(lang, 'pasteWhitelistPlaceholder')}
             value={pasteText}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPasteText(e.currentTarget.value)}
+            onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setPasteText(event.currentTarget.value)}
             rows={3}
           />
-          <button
-            type="button"
-            className="btn btn-paste-submit"
-            onClick={handlePasteSubmit}
-          >
-            ➕ {t(lang, "addPastedToWhitelist")}
+          <button type='button' className='wa-btn wa-btn--ghost wa-btn--small' onClick={handlePasteSubmit}>
+            {t(lang, 'addPastedToWhitelist')}
           </button>
         </div>
       )}
 
-      <div className="whitelist-info">
-        <p className="info-text">
-          <strong>💡 Tip:</strong> {t(lang, "whitelistTip")}
-        </p>
-      </div>
+      <p className='wa-whitelist__tip'>{t(lang, 'whitelistTip')}</p>
     </div>
   );
 };

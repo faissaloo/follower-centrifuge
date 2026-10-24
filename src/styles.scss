@@ -1,4 +1,13 @@
-@use 'styles/_variables';
-@use 'styles/_helpers';
-@use 'styles/main';
-@use 'styles/ux_improvements';
+// Follower Centrifuge — visual system
+//
+// Layered from tokens outwards. Everything is scoped under `.iu` so the script
+// can be pasted into an arbitrary host page (instagram.com) without leaking
+// styles onto it.
+
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/primitives';
+@use 'styles/launch';
+@use 'styles/screens';
+@use 'styles/centrifuge';
+@use 'styles/wizard';

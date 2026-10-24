@@ -1,0 +1,388 @@
+@use 'tokens' as *;
+
+// ---------------------------------------------------------------------------
+// Launch screen — a quiet "editorial" two-column composition:
+// one brand mark in a slim header, an oversized serif headline, a single
+// how-it-works panel, one brass call to action, and a soft right rail that
+// carries classifier status plus two typeset promises.
+// ---------------------------------------------------------------------------
+
+.iu {
+  .wa-launch {
+    justify-content: center;
+    padding: clamp(1.15rem, 3vh, 2.2rem) clamp(1.1rem, 4.5vw, 3.5rem) clamp(1.6rem, 3.4vh, 2.6rem);
+  }
+
+  .wa-launch__inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto;
+    gap: clamp(1.7rem, 3.6vh, 2.7rem);
+  }
+
+  .wa-launch__header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.95rem;
+    border-bottom: 1px solid $line-soft;
+
+    // The screen's single hazard-stripe accent.
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 3px;
+      @include hazard-stripes(0.16);
+      opacity: 0.6;
+    }
+  }
+
+  .wa-brand--launch {
+    gap: 0.8rem;
+
+    .wa-brand__mark svg {
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+
+    .wa-brand__text strong {
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .wa-brand__text small {
+      font-family: $font-mono !important;
+      font-size: 0.56rem;
+      letter-spacing: 0.2em;
+    }
+  }
+
+  .wa-launch__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.14fr) minmax(300px, 0.72fr);
+    gap: clamp(2.4rem, 5vw, 4.4rem);
+    align-items: start;
+  }
+
+  .wa-launch__main {
+    min-width: 0;
+    padding-top: 0.35rem;
+  }
+
+  .wa-launch__title {
+    max-width: 15ch;
+    color: $text;
+    font-family: $font-display !important;
+    font-size: clamp(2.2rem, 3.5vw, 3.3rem);
+    font-weight: 600;
+    line-height: 1.04;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .wa-launch__description {
+    max-width: 47ch;
+    margin-top: 0.95rem;
+    color: $text-muted;
+    font-size: 0.94rem;
+    line-height: 1.66;
+    text-wrap: pretty;
+  }
+
+  // "How it works" — a single calm panel instead of three stacked cards ------
+
+  .wa-how {
+    margin-top: clamp(1.45rem, 2.7vh, 2.05rem);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .wa-how__title {
+    margin: 0;
+    padding: 0.85rem 1.35rem 0.68rem;
+    border-bottom: 1px solid $line-soft;
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .wa-how__list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wa-how__step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 0.78rem 1.35rem;
+    border-bottom: 1px solid $line-soft;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  .wa-how__copy {
+    position: relative;
+    min-width: 0;
+    padding-left: 1.15rem;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0.62em;
+      left: 0;
+      width: 0.55rem;
+      height: 1px;
+      background: $accent;
+      opacity: 0.75;
+    }
+
+    strong {
+      display: block;
+      color: $text;
+      font-family: $font-display !important;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: 0.005em;
+    }
+
+    p {
+      margin-top: 0.18rem;
+      color: $text-muted;
+      font-size: 0.79rem;
+      line-height: 1.55;
+    }
+  }
+
+  // Calls to action ---------------------------------------------------------
+
+  .wa-launch__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: clamp(1.5rem, 2.8vh, 2.1rem);
+  }
+
+  .wa-launch__actions .wa-btn--primary {
+    min-width: 12.4rem;
+  }
+
+  .wa-launch__quiet {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    margin-top: 0.85rem;
+
+    .wa-btn {
+      color: #b9b39b;
+      text-decoration: underline;
+      text-decoration-color: rgba(214, 189, 82, 0.35);
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+
+      &:hover:not(:disabled) {
+        color: $accent-hover;
+        text-decoration-color: rgba(217, 188, 132, 0.6);
+      }
+    }
+  }
+
+  .wa-launch__note {
+    max-width: 48ch;
+    margin-top: 0.6rem;
+    color: $text-faint;
+    font-size: 0.75rem;
+    line-height: 1.55;
+  }
+
+  .wa-launch__blocked {
+    max-width: 52ch;
+    margin-top: 1.15rem;
+  }
+
+  // Right rail — soft, typographic, almost weightless -----------------------
+
+  .wa-launch__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+    min-width: 0;
+    padding-top: 0.2rem;
+  }
+
+  .wa-classifier {
+    padding: 0.95rem 1.1rem;
+
+    .wa-panel__title {
+      margin-bottom: 0.7rem;
+      color: $text-faint;
+      font-family: $font-mono !important;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+  }
+
+  .wa-classifier__status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+
+    strong {
+      color: $text;
+      font-size: 0.85rem;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+  }
+
+  .wa-classifier__detail {
+    margin-top: 0.42rem;
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .wa-classifier__actions {
+    display: flex;
+    margin-top: 0.75rem;
+  }
+
+  .wa-note {
+    padding: 0 0.15rem;
+  }
+
+  .wa-note + .wa-note {
+    padding-top: 1.15rem;
+    border-top: 1px solid $line-soft;
+  }
+
+  .wa-note__label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.42rem;
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    line-height: 1.4;
+    text-transform: uppercase;
+
+    svg {
+      width: 0.92rem;
+      height: 0.92rem;
+      color: $secondary;
+      opacity: 0.85;
+    }
+  }
+
+  .wa-note p {
+    color: $text-muted;
+    font-size: 0.78rem;
+    line-height: 1.62;
+    text-wrap: pretty;
+  }
+
+  .wa-launch__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 1rem;
+    border-top: 1px solid $line-soft;
+    color: $text-faint;
+    font-size: 0.7rem;
+    line-height: 1.55;
+  }
+}
+
+// Responsive ---------------------------------------------------------------
+
+@media (max-width: 1020px) {
+  .iu {
+    .wa-launch__grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: clamp(2rem, 4vh, 2.8rem);
+    }
+
+    .wa-launch__aside {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 1.6rem 2.2rem;
+      align-items: start;
+    }
+
+    .wa-classifier {
+      grid-column: 1 / -1;
+    }
+
+    .wa-launch__meta {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .iu {
+    .wa-launch {
+      padding: 1.35rem 1.05rem 2.4rem;
+    }
+
+    .wa-launch__title {
+      font-size: clamp(2.15rem, 9.5vw, 2.7rem);
+      max-width: 18ch;
+    }
+
+    .wa-launch__description {
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .wa-launch__aside {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.45rem;
+    }
+
+    .wa-launch__actions {
+      .wa-btn {
+        flex: 1 1 auto;
+      }
+
+      .wa-btn--primary {
+        min-width: 100%;
+      }
+    }
+
+    .wa-brand--launch .wa-brand__text strong {
+      font-size: 1.08rem;
+    }
+
+    .wa-brand--launch .wa-brand__text small {
+      font-size: 0.52rem;
+      letter-spacing: 0.13em;
+      white-space: normal;
+    }
+  }
+}

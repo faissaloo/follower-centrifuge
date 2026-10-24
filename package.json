@@ -1,10 +1,21 @@
 {
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint src tests --ext .ts,.tsx && eslint server --ext .mjs",
+    "verify": "npm run typecheck && npm run typecheck:tests && npm run lint && npm test",
+    "proxy": "node server/deepseek-proxy.mjs",
     "webpack-build": "webpack --mode production",
     "build-dev": "npm run build && webpack serve --mode development",
     "build-prod": "npm run build && webpack serve --mode production",
     "update-index": "node scripts/update-index.js public/index.html dist/dist.js",
-    "build": "npm run webpack-build && npm run update-index"
+    "build": "npm run webpack-build && npm run update-index",
+    "build:local-key": "node scripts/build-local-keyed.js",
+    "check:classifier": "vite-node scripts/check-classifier.ts",
+    "trust:relay": "node scripts/trust-local-relay.mjs"
   },
   "babel": {
     "plugins": [
@@ -15,17 +26,21 @@
     "@babel/cli": "^7.26.4",
     "@babel/core": "^7.26.0",
     "@babel/plugin-transform-react-jsx": "^7.25.9",
+    "@testing-library/preact": "^3.2.6",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "css-loader": "^6.11.0",
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^4.6.2",
+    "jsdom": "^25.0.1",
     "sass": "^1.83.4",
     "sass-loader": "^13.3.3",
     "style-loader": "^3.3.4",
     "ts-loader": "^9.5.2",
     "typescript": "^5.7.3",
+    "vitest": "^2.1.9",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.2.0"

@@ -1,0 +1,144 @@
+// ---------------------------------------------------------------------------
+// Design tokens — "atomic-age test instrument", classy restrained
+// nu-skeuomorphism.
+//
+// A 1950s research-facility palette: warm charcoal ground, matte instrument
+// panels, engraving-style uranium amber, olive secondary, dosimeter pale green
+// and a muted rust danger colour. Depth is expressed with paired soft shadows
+// plus a 1px inset highlight — like a milled metal control catching the light
+// from above. No neon, no colour glow, no glassmorphism.
+// ---------------------------------------------------------------------------
+
+// Ground
+$bg: #131410;
+$bg-end: #1a1b16;
+$bg-deep: #101109;
+
+// Matte instrument surfaces
+$surface: #202119;
+$surface-raised: #25271f;
+$surface-hover: #2a2c22;
+$surface-sunken: #191a13;
+$surface-well: #111209;
+
+// Ink
+$text: #ece8d8;
+$text-muted: #a4a28c;
+$text-faint: #7c7a68;
+$text-on-accent: #241f0b;
+
+// Uranium amber — the only loud colour, and only for primary actions.
+$accent: #d6bd52;
+$accent-hover: #e6cf6d;
+$accent-deep: #b59d3e;
+$accent-soft: rgba(214, 189, 82, 0.13);
+$accent-line: rgba(214, 189, 82, 0.42);
+
+// Olive secondary
+$secondary: #97a97c;
+$secondary-strong: #869a6b;
+$secondary-soft: rgba(151, 169, 124, 0.12);
+$secondary-line: rgba(151, 169, 124, 0.34);
+
+// Dosimeter pale green — "cool"/informational, dry runs, reassurance.
+$info: #a9c29b;
+$info-soft: rgba(169, 194, 155, 0.11);
+$info-line: rgba(169, 194, 155, 0.32);
+
+// Muted rust — destructive / live
+$danger: #b3573f;
+$danger-hover: #c2684e;
+$danger-soft: rgba(179, 87, 63, 0.14);
+$danger-line: rgba(179, 87, 63, 0.42);
+
+// Classifier category tones — low saturation, antique instrument colours.
+$cat-female: #c9935f; // warm copper-amber
+$cat-female-fill: #d4a474;
+$cat-male: #8fa3b8; // muted steel blue
+$cat-male-fill: #9db2c7;
+$cat-machine: #a8c48f; // pale radium green
+$cat-machine-fill: #b6d19d;
+$cat-organization: #a08a6a; // graphite bronze
+$cat-organization-fill: #b09a78;
+$cat-ambiguous: #cbc2a8; // neutral parchment
+$cat-ambiguous-fill: #d6cdb4;
+
+// Hairlines & highlights
+$line: rgba(236, 232, 216, 0.06);
+$line-soft: rgba(236, 232, 216, 0.045);
+$line-strong: rgba(236, 232, 216, 0.11);
+$highlight: rgba(255, 255, 255, 0.05);
+$highlight-strong: rgba(255, 255, 255, 0.085);
+
+// Elevation: two soft shadows (contact + ambient) + inset top highlight.
+$shadow-card: 0 18px 40px rgba(0, 0, 0, 0.36), 0 3px 8px rgba(0, 0, 0, 0.28);
+$shadow-card-sm: 0 10px 24px rgba(0, 0, 0, 0.32), 0 2px 5px rgba(0, 0, 0, 0.26);
+$shadow-raise: 0 3px 6px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.26);
+$shadow-raised-hover: 0 10px 22px rgba(0, 0, 0, 0.36), 0 2px 5px rgba(0, 0, 0, 0.28);
+$shadow-inset: inset 2px 2px 6px rgba(0, 0, 0, 0.46), inset -1px -1px 3px rgba(255, 255, 255, 0.026);
+$shadow-inset-deep: inset 3px 3px 9px rgba(0, 0, 0, 0.52), inset -2px -2px 6px rgba(255, 255, 255, 0.028);
+
+// Radii
+$radius-xl: 20px;
+$radius-lg: 16px;
+$radius: 13px;
+$radius-sm: 10px;
+$radius-xs: 7px;
+
+// Type
+$font-display: 'Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+$font-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+$font-mono: 'SFMono-Regular', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+// Motion
+$ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+$speed: 160ms;
+$speed-slow: 200ms;
+
+// Helpers ------------------------------------------------------------------
+
+@mixin raised($shadow: $shadow-card-sm) {
+  background-color: $surface;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022) 0%, rgba(0, 0, 0, 0.035) 100%),
+    repeating-linear-gradient(0deg, rgba(236, 232, 216, 0.012) 0 1px, transparent 1px 3px);
+  border: 1px solid $line;
+  box-shadow: $shadow, inset 0 1px 0 $highlight;
+}
+
+@mixin well {
+  background: $surface-well;
+  border: 1px solid $line-soft;
+  box-shadow: $shadow-inset;
+}
+
+@mixin focus-ring {
+  outline: 1px solid rgba(214, 189, 82, 0.6);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(214, 189, 82, 0.14);
+}
+
+// Instrument caption: small mono, letter-spaced.
+@mixin label-caps {
+  font-family: $font-mono !important;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: $text-faint;
+}
+
+@mixin serif {
+  font-family: $font-display !important;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+// One restrained hazard stripe, used sparingly as a screen accent.
+@mixin hazard-stripes($alpha: 0.28) {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(214, 189, 82, $alpha) 0 5px,
+    rgba(19, 20, 16, 0) 5px 10px
+  );
+}

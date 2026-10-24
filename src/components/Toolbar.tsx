@@ -1,239 +1,213 @@
-import React, { ChangeEvent, useState } from "react";
-import { State } from "../model/state";
-import { assertUnreachable, copyListToClipboard, exportToCSV, exportToJSON, getCurrentPageUnfollowers, getUsersForDisplay } from "../utils/utils";
-import { SettingMenu } from "./SettingMenu";
-import { SettingIcon } from "./icons/SettingIcon";
-import { Timings } from "../model/timings";
-import { Logo } from "./icons/Logo";
-import { UserNode } from "../model/user";
-import { Language, t } from "../utils/i18n";
+import React, { useEffect, useRef } from 'react';
+import { ActionMode } from '../model/action-plan';
+import { Language, t } from '../utils/i18n';
+import { BrandWordmark } from './icons/BrandWordmark';
+import { SettingIcon } from './icons/SettingIcon';
+import { BackIcon } from './icons/BackIcon';
 
-interface ToolBarProps {
-  isActiveProcess: boolean;
-  state: State;
-  setState: (state: State) => void;
-  toggleAllUsers: (e: ChangeEvent<HTMLInputElement>) => void;
-  toggleCurrentePageUsers: (e: ChangeEvent<HTMLInputElement>) => void;
-  currentTimings: Timings;
-  setTimings: (timings: Timings) => void;
-  whitelistedUsers: readonly UserNode[];
-  onWhitelistUpdate: (users: readonly UserNode[]) => void;
-  lang: Language;
-  onLanguageChange: (lang: Language) => void;
+/** Checkbox whose third (indeterminate) state can be driven from props. */
+interface TriStateCheckboxProps {
+  readonly label: string;
+  readonly title?: string;
+  readonly checked: boolean;
+  readonly indeterminate: boolean;
+  readonly disabled?: boolean;
+  readonly onChange: (checked: boolean) => void;
 }
 
-export const Toolbar = ({
-  isActiveProcess,
-  state,
-  setState,
-  toggleAllUsers,
-  toggleCurrentePageUsers,
-  currentTimings,
-  setTimings,
-  whitelistedUsers,
-  onWhitelistUpdate,
-  lang,
-  onLanguageChange,
-}: ToolBarProps) => {
-
-  const [settingMenu, setSettingMenu] = useState(false);
-
+const TriStateCheckbox = ({ label, title, checked, indeterminate, disabled = false, onChange }: TriStateCheckboxProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (inputRef.current !== null) {
+      inputRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
   return (
-    <header className="app-header">
-      {state.status === "scanning" && state.results.length === 0 && (
-        <div className="scan-warning-banner" role="status">
-          <span>{t(lang, "scanNoticeBanner")}</span>
-        </div>
-      )}
-      {isActiveProcess && (
-        <div
-          className="progressbar"
-          style={{ '--progress-width': `${state.status !== 'initial' ? state.percentage : 0}%` } as React.CSSProperties}
-        />
-      )}
-      <div className="app-header-content">
-        <div
-          className="logo"
-          onClick={() => {
-            if (isActiveProcess) {
-              // Avoid resetting state while active process.
-              return;
-            }
-            switch (state.status) {
-              case "initial":
-                if (confirm(t(lang, "goBackConfirm"))) {
-                  location.reload();
-                }
-                break;
-
-              case "scanning":
-              case "unfollowing":
-                setState({
-                  status: "initial",
-                });
-            }
-          }}
-        >
-          <Logo />
-          <div className="logo-text">
-            <span>Instagram</span>
-            <span>Unfollowers</span>
-          </div>
-        </div>
-        <div className="toolbar-actions">
-          <button
-            className="copy-list"
-            onClick={() => {
-              switch (state.status) {
-                case "scanning":
-                  return copyListToClipboard(
-                    getUsersForDisplay(
-                      state.results,
-                      state.whitelistedResults,
-                      state.currentTab,
-                      state.searchTerm,
-                      state.filter,
-                    ),
-                    t(lang, "copiedToClipboard")
-                  );
-                case "initial":
-                case "unfollowing":
-                  return;
-                default:
-                  assertUnreachable(state);
-              }
-            }}
-            disabled={state.status === "initial"}
-          >
-            {t(lang, "copyList")}
-          </button>
-          <button
-            className="copy-list"
-            title={t(lang, "exportJson")}
-            onClick={() => {
-              if (state.status === "scanning") {
-                exportToJSON(getUsersForDisplay(state.results, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
-              }
-            }}
-            disabled={state.status !== "scanning"}
-          >
-            JSON
-          </button>
-          <button
-            className="copy-list"
-            title={t(lang, "exportCsv")}
-            onClick={() => {
-              if (state.status === "scanning") {
-                exportToCSV(getUsersForDisplay(state.results, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter));
-              }
-            }}
-            disabled={state.status !== "scanning"}
-          >
-            CSV
-          </button>
-          <button
-            className="copy-list"
-            type="button"
-            title={lang === "en" ? t(lang, "switchToSpanish") : t(lang, "switchToEnglish")}
-            onClick={() => onLanguageChange(lang === "en" ? "es" : "en")}
-            style={{ fontWeight: "bold" }}
-          >
-            🌐 {lang.toUpperCase()}
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            title={t(lang, "settings")}
-            onClick={() => { setSettingMenu(true); }}
-          >
-            <SettingIcon />
-          </button>
-        </div>
-        <div className="toolbar-search">
-          <input
-            type="text"
-            className="search-bar"
-            placeholder={t(lang, "searchPlaceholder")}
-            disabled={state.status === "initial"}
-            value={state.status === "initial" ? "" : state.searchTerm}
-            onChange={e => {
-              switch (state.status) {
-                case "initial":
-                  return;
-                case "scanning":
-                  return setState({
-                    ...state,
-                    searchTerm: e.currentTarget.value,
-                  });
-                case "unfollowing":
-                  return setState({
-                    ...state,
-                    searchTerm: e.currentTarget.value,
-                  });
-                default:
-                  assertUnreachable(state);
-              }
-            }}
-          />
-          {state.status === "scanning" && (
-            <label className="select-toggle">
-              <input
-                title={t(lang, "selectPage")}
-                type="checkbox"
-                // Avoid allowing selection only while the scan is actively fetching
-                disabled={Boolean(state.isScanningActive)}
-                checked={
-                  (() => {
-                    const displayed = getUsersForDisplay(state.results, state.whitelistedResults, state.currentTab, state.searchTerm, state.filter);
-                    const pageUsers = getCurrentPageUnfollowers(displayed, state.page);
-                    return pageUsers.length > 0 && pageUsers.every(u => state.selectedResults.some(s => s.id === u.id));
-                  })()
-                }
-                className="toggle-all-checkbox"
-                onChange={toggleCurrentePageUsers}
-              />
-              {t(lang, "selectPage")}
-            </label>
-          )}
-          {state.status === "scanning" && (
-            <label className="select-toggle">
-              <input
-                title={t(lang, "selectAll")}
-                type="checkbox"
-                // Avoid allowing selection only while the scan is actively fetching
-                disabled={Boolean(state.isScanningActive)}
-                checked={
-                  (() => {
-                    const displayed = getUsersForDisplay(
-                      state.results,
-                      state.whitelistedResults,
-                      state.currentTab,
-                      state.searchTerm,
-                      state.filter,
-                    );
-                    return displayed.length > 0 && displayed.every(u => state.selectedResults.some(s => s.id === u.id));
-                  })()
-                }
-                className="toggle-all-checkbox"
-                onChange={toggleAllUsers}
-              />
-              {t(lang, "selectAll")}
-            </label>
-          )}
-        </div>
-      </div>
-      {settingMenu && (
-        <SettingMenu
-          setSettingState={setSettingMenu}
-          currentTimings={currentTimings}
-          setTimings={setTimings}
-          whitelistedUsers={whitelistedUsers}
-          onWhitelistUpdate={onWhitelistUpdate}
-          lang={lang}
-          onLanguageChange={onLanguageChange}
-        />
-      )}
-
-    </header>
+    <label className='wa-toggle'>
+      <input
+        ref={inputRef}
+        type='checkbox'
+        checked={checked}
+        disabled={disabled}
+        aria-label={label}
+        title={title}
+        onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.currentTarget.checked)}
+      />
+      <span>{label}</span>
+    </label>
   );
 };
+
+export interface ToolbarProps {
+  readonly lang: Language;
+  readonly onLanguageChange: (lang: Language) => void;
+  readonly onOpenSettings: () => void;
+  readonly onBack: () => void;
+  readonly backDisabled?: boolean;
+  /** Current plan mode, when one exists. Hidden when null/undefined. */
+  readonly mode?: ActionMode | null;
+  /** True when the review screen is showing the built-in demo dataset. */
+  readonly demo?: boolean;
+  readonly searchValue?: string;
+  readonly onSearchChange?: (value: string) => void;
+  readonly searchPlaceholder?: string;
+  readonly searchDisabled?: boolean;
+  readonly showSelection?: boolean;
+  readonly selectionDisabled?: boolean;
+  readonly selectPageChecked?: boolean;
+  readonly selectPageIndeterminate?: boolean;
+  readonly onToggleSelectPage?: (checked: boolean) => void;
+  readonly selectAllChecked?: boolean;
+  readonly selectAllIndeterminate?: boolean;
+  readonly onToggleSelectAll?: (checked: boolean) => void;
+  readonly onCopy?: () => void;
+  readonly onExportJson?: () => void;
+  readonly onExportCsv?: () => void;
+  readonly exportsDisabled?: boolean;
+}
+
+/**
+ * Global app toolbar: brand, search, selection shortcuts, exports, language
+ * switch, settings and the dry-run/live mode badge.
+ *
+ * Entirely controlled: all values come from props and every interaction is a
+ * callback, so the same component can drive the review and execution screens.
+ */
+export const Toolbar = ({
+  lang,
+  onLanguageChange,
+  onOpenSettings,
+  onBack,
+  backDisabled = false,
+  mode = null,
+  demo = false,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder,
+  searchDisabled = false,
+  showSelection = false,
+  selectionDisabled = false,
+  selectPageChecked = false,
+  selectPageIndeterminate = false,
+  onToggleSelectPage,
+  selectAllChecked = false,
+  selectAllIndeterminate = false,
+  onToggleSelectAll,
+  onCopy,
+  onExportJson,
+  onExportCsv,
+  exportsDisabled = false,
+}: ToolbarProps) => (
+  <header className='wa-toolbar'>
+    <div className='wa-toolbar__bar'>
+      <button
+        type='button'
+        className='wa-btn wa-btn--ghost wa-toolbar__back'
+        aria-label={t(lang, 'back')}
+        title={t(lang, 'back')}
+        disabled={backDisabled}
+        onClick={onBack}
+      >
+        <BackIcon />
+        <span>{t(lang, 'back')}</span>
+      </button>
+
+      <BrandWordmark name={t(lang, 'appName')} toolbar />
+
+      {onSearchChange !== undefined && (
+        <input
+          type='search'
+          className='wa-search'
+          value={searchValue}
+          placeholder={searchPlaceholder === undefined ? t(lang, 'searchPlaceholder') : searchPlaceholder}
+          aria-label={searchPlaceholder === undefined ? t(lang, 'searchPlaceholder') : searchPlaceholder}
+          disabled={searchDisabled}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => onSearchChange(event.currentTarget.value)}
+        />
+      )}
+
+      <div className='wa-toolbar__controls'>
+        {mode !== null && (
+          <span
+            className={`wa-mode-badge wa-mode-badge--${mode === 'live' ? 'live' : 'dry'}`}
+            aria-label={t(lang, 'modeBadgeAria', mode === 'live' ? t(lang, 'execLiveBadge') : t(lang, 'execSimulationBadge'))}
+            data-testid='mode-badge'
+          >
+            {mode === 'live' ? t(lang, 'modeLiveBadge') : t(lang, 'modeDryBadge')}
+          </span>
+        )}
+        {demo && (
+          <span className='wa-badge wa-badge--demo' data-testid='demo-badge'>
+            {t(lang, 'demoBadge')}
+          </span>
+        )}
+      </div>
+
+      <div className='wa-toolbar__exports'>
+        {onCopy !== undefined && (
+          <button type='button' className='wa-btn wa-btn--ghost' disabled={exportsDisabled} onClick={onCopy}>
+            {t(lang, 'copyList')}
+          </button>
+        )}
+        {onExportJson !== undefined && (
+          <button type='button' className='wa-btn wa-btn--ghost' disabled={exportsDisabled} onClick={onExportJson}>
+            {t(lang, 'exportJson')}
+          </button>
+        )}
+        {onExportCsv !== undefined && (
+          <button type='button' className='wa-btn wa-btn--ghost' disabled={exportsDisabled} onClick={onExportCsv}>
+            {t(lang, 'exportCsv')}
+          </button>
+        )}
+      </div>
+
+      <div className='wa-toolbar__utility'>
+        <button
+          type='button'
+          className='wa-btn wa-btn--ghost wa-toolbar__lang'
+          title={lang === 'en' ? t(lang, 'switchToSpanish') : t(lang, 'switchToEnglish')}
+          aria-label={lang === 'en' ? t(lang, 'switchToSpanish') : t(lang, 'switchToEnglish')}
+          onClick={() => onLanguageChange(lang === 'en' ? 'es' : 'en')}
+        >
+          {lang.toUpperCase()}
+        </button>
+        <button
+          type='button'
+          className='wa-btn wa-btn--icon wa-toolbar__settings'
+          title={t(lang, 'openSettings')}
+          aria-label={t(lang, 'openSettings')}
+          onClick={onOpenSettings}
+        >
+          <SettingIcon />
+        </button>
+      </div>
+    </div>
+
+    {showSelection && (
+      <div className='wa-toolbar__selection'>
+        <TriStateCheckbox
+          label={t(lang, 'selectPage')}
+          checked={selectPageChecked}
+          indeterminate={selectPageIndeterminate}
+          disabled={selectionDisabled}
+          onChange={(checked: boolean) => {
+            if (onToggleSelectPage !== undefined) {
+              onToggleSelectPage(checked);
+            }
+          }}
+        />
+        <TriStateCheckbox
+          label={t(lang, 'selectAll')}
+          checked={selectAllChecked}
+          indeterminate={selectAllIndeterminate}
+          disabled={selectionDisabled}
+          onChange={(checked: boolean) => {
+            if (onToggleSelectAll !== undefined) {
+              onToggleSelectAll(checked);
+            }
+          }}
+        />
+      </div>
+    )}
+  </header>
+);

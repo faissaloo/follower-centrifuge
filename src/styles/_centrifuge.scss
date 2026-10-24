@@ -1,0 +1,205 @@
+@use 'tokens' as *;
+
+// ---------------------------------------------------------------------------
+// Centrifuge — decorative gas-centrifuge enrichment cascade.
+//
+// Counter-rotating milled rings, a uranium core and a staged cascade of
+// transfer bars. Everything is CSS-only; motion is reduced/disabled under
+// prefers-reduced-motion and the whole figure is aria-hidden in the markup.
+// ---------------------------------------------------------------------------
+
+@keyframes wa-cf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wa-cf-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes wa-cf-core {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes wa-cf-cascade {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scaleY(0.6);
+  }
+  45% {
+    opacity: 0.85;
+    transform: scaleY(1);
+  }
+}
+
+.iu {
+  .wa-centrifuge {
+    --cf-size: 88px;
+    --cf-fast: 1;
+    position: relative;
+    display: block;
+    flex: 0 0 auto;
+    width: var(--cf-size);
+    height: var(--cf-size);
+  }
+
+  .wa-centrifuge--sm {
+    --cf-size: 58px;
+  }
+
+  .wa-centrifuge--md {
+    --cf-size: 96px;
+  }
+
+  .wa-centrifuge--lg {
+    --cf-size: 178px;
+  }
+
+  // Engraved instrument plate behind the rotors.
+  .wa-centrifuge::before {
+    content: '';
+    position: absolute;
+    inset: 6%;
+    border-radius: 50%;
+    border: 1px solid rgba($accent-line, 0.32);
+    background:
+      radial-gradient(circle at 50% 50%, rgba($accent-soft, 0.55), transparent 62%),
+      radial-gradient(circle at 50% 50%, rgba($surface-well, 0.45), transparent 72%);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+  }
+
+  .wa-centrifuge__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg 22deg,
+      rgba($accent-hover, 0.95) 22deg 32deg,
+      transparent 32deg 92deg,
+      rgba($accent, 0.55) 92deg 100deg,
+      transparent 100deg 158deg,
+      rgba($secondary, 0.7) 158deg 166deg,
+      transparent 166deg 232deg,
+      rgba($accent-hover, 0.85) 232deg 242deg,
+      transparent 242deg 300deg,
+      rgba($accent, 0.4) 300deg 306deg,
+      transparent 306deg 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    animation: wa-cf-spin calc(9s / var(--cf-fast)) linear infinite;
+    will-change: transform;
+  }
+
+  .wa-centrifuge__ring--outer {
+    inset: 0;
+  }
+
+  .wa-centrifuge__ring--mid {
+    inset: 17%;
+    animation: wa-cf-spin-reverse calc(6.2s / var(--cf-fast)) linear infinite;
+    filter: brightness(0.92);
+  }
+
+  .wa-centrifuge__ring--inner {
+    inset: 34%;
+    animation-duration: calc(3.6s / var(--cf-fast));
+    filter: brightness(0.82);
+  }
+
+  .wa-centrifuge__core {
+    position: absolute;
+    inset: 41%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 38% 32%, rgba($accent-hover, 0.95), rgba($accent-deep, 0.7) 52%, rgba($surface-well, 0.95) 100%);
+    box-shadow:
+      0 0 0 1px rgba($accent-line, 0.5),
+      inset 0 1px 1px rgba(255, 255, 255, 0.35),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.55);
+    animation: wa-cf-core 2.8s ease-in-out infinite;
+  }
+
+  .wa-centrifuge__cascade {
+    position: absolute;
+    inset: 6%;
+    display: block;
+    animation: wa-cf-spin calc(24s / var(--cf-fast)) linear infinite;
+  }
+
+  .wa-centrifuge__bar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 15%;
+    margin: -7.5% 0 0 -1px;
+    transform-origin: 50% 0;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, rgba($accent, 0), rgba($accent-hover, 0.95));
+    animation: wa-cf-cascade 2.4s ease-in-out infinite;
+  }
+
+  // Staggered cascade bar positions around the rotor.
+  @for $i from 1 through 8 {
+    .wa-centrifuge__bar:nth-child(#{$i}) {
+      transform: rotate(#{($i - 1) * 45}deg) translateY(-46%);
+      animation-delay: #{($i - 1) * 0.14}s;
+    }
+  }
+
+  .wa-centrifuge--enriching {
+    --cf-fast: 1.9;
+
+    .wa-centrifuge__cascade {
+      animation-duration: 12s;
+    }
+
+    .wa-centrifuge__bar {
+      background: linear-gradient(to bottom, rgba($accent, 0), rgba($accent, 0.85));
+      animation-duration: 1.1s;
+    }
+  }
+
+  // Instrument caption used next to the launch-screen rotor.
+  .wa-centrifuge-label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.7rem;
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: $text-faint;
+  }
+
+  .wa-centrifuge-label::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background: linear-gradient(to right, rgba($accent-line, 0.6), transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wa-centrifuge__ring,
+    .wa-centrifuge__core,
+    .wa-centrifuge__cascade,
+    .wa-centrifuge__bar {
+      animation: none !important;
+    }
+  }
+}

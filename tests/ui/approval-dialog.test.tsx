@@ -53,7 +53,7 @@ describe('LiveApprovalDialog', () => {
   it('shows the exact target count, usernames and the irreversible warning', () => {
     renderDialog();
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByText(/really unfollows or removes from your followers 3 accounts/)).toBeTruthy();
+    expect(screen.getByText(/really unfollows and\/or removes 3 accounts/)).toBeTruthy();
     expect(screen.getByText('@alina.frames')).toBeTruthy();
     expect(screen.getByText('@brassandbone')).toBeTruthy();
     expect(screen.getByText('@citrus.archive')).toBeTruthy();

@@ -76,7 +76,7 @@ describe('ExecutingScreen', () => {
     expect(banner.getAttribute('data-mode')).toBe('dry-run');
     expect(banner.getAttribute('role')).toBe('status');
     expect(screen.getByText('SIMULATION — nothing was changed')).toBeTruthy();
-    expect(screen.getByText(/nobody got unfollowed/)).toBeTruthy();
+    expect(screen.getByText(/nothing was unfollowed or removed-from-followers/)).toBeTruthy();
     expect(screen.queryByText('LIVE RUN — accounts were really removed')).toBeNull();
     expect(screen.getByTestId('mode-badge').textContent).toBe('DRY RUN — nothing changed');
   });

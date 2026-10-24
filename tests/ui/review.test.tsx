@@ -192,7 +192,7 @@ describe('ReviewScreen', () => {
     renderReview({ selectedIds: ['demo-1', 'demo-3'], onLiveRun });
     fireEvent.click(screen.getByRole('button', { name: /Unfollow \/ remove for real…/ }));
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByText(/really unfollows or removes from your followers 2 accounts/)).toBeTruthy();
+    expect(screen.getByText(/really unfollows and\/or removes 2 accounts/)).toBeTruthy();
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('checkbox'));
     fireEvent.input(within(dialog).getByLabelText('Confirmation phrase'), { target: { value: 'UNFOLLOW 2' } });

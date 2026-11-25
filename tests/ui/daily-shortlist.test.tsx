@@ -51,6 +51,30 @@ describe('DailyShortlist', () => {
     expect(screen.getByText(t('en', 'dailyReadOnly'))).toBeTruthy();
   });
 
+  it('shows an avatar, follow button and follow state from the explicit action', async () => {
+    const onFollow = vi.fn(async () => ({ ok: true, state: 'following' as const }));
+    const withPicture = {
+      ...state,
+      entries: [{ ...state.entries[0], profilePicUrl: 'https://cdn.example/avatar.jpg', isPrivate: true }],
+    };
+    const { container } = render(
+      <DailyShortlist
+        lang='en'
+        prompt='ceramics'
+        state={withPicture}
+        busy={false}
+        onSavePrompt={vi.fn()}
+        onRefresh={vi.fn()}
+        onFollow={onFollow}
+      />,
+    );
+    const avatar = container.querySelector('.wa-daily__avatar img');
+    expect(avatar?.getAttribute('src')).toBe('https://cdn.example/avatar.jpg');
+    const button = screen.getByRole('button', { name: t('en', 'dailyRequestFollow') });
+    fireEvent.click(button);
+    expect(onFollow).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps save available while a refresh is running', () => {
     const onSavePrompt = vi.fn();
     render(

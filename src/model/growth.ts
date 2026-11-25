@@ -40,6 +40,8 @@ export interface ShortlistCandidate {
   readonly sourceCount?: number;
   /** 0..1 novelty/distance score; higher means further out from your network. */
   readonly networkDistance?: number;
+  /** Result of a manual follow button press, if one has happened. */
+  readonly followState?: 'requested' | 'following';
 }
 
 export type MatchStrength = 'strong' | 'good' | 'maybe' | 'weak';

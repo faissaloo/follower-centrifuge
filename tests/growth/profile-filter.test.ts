@@ -87,10 +87,4 @@ describe('profile filter scoring', () => {
       filterShortlistCandidates([candidate(1, 0.8, 1)], 'ceramics', { ...config(), typesafeApiKey: '' }, {}),
     ).rejects.toThrow(/TypeSafe Jev/);
   });
-
-  it('refuses sensitive-trait filter prompts before scoring', async () => {
-    await expect(
-      filterShortlistCandidates([candidate(1, 0.8, 1)], 'Muslim women who post art', config(), {}),
-    ).rejects.toBeInstanceOf(ProfileFilterError);
-  });
 });

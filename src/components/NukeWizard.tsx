@@ -37,6 +37,8 @@ export interface NukeWizardProps {
   readonly keySetupNeeded?: boolean;
   /** Save user-provided API keys for this tab (sessionStorage only). */
   readonly onSaveClassifierKeys?: (typesafeKey: string, deepseekKey: string) => void;
+  /** Open the full Daily 20 page. */
+  readonly onOpenGrowth?: () => void;
 }
 
 interface CategoryCard {
@@ -76,6 +78,7 @@ export const NukeWizard = ({
   onRetryRelay,
   keySetupNeeded = false,
   onSaveClassifierKeys,
+  onOpenGrowth,
 }: NukeWizardProps) => {
   const relayBlocked = relayStatus === 'checking' || relayStatus === 'error';
   const keySetupBlocked = keySetupNeeded && onSaveClassifierKeys !== undefined;
@@ -185,6 +188,11 @@ export const NukeWizard = ({
           <p className='wa-wizard__promise'>{t(lang, 'dryRunPromise')}</p>
 
           <div className='wa-wizard__quiet'>
+            {onOpenGrowth !== undefined && (
+              <button type='button' className='wa-btn wa-btn--ghost wa-btn--small' onClick={onOpenGrowth} disabled={busy}>
+                {t(lang, 'dailyOpen')}
+              </button>
+            )}
             {onLoadDemo !== undefined && (
               <button type='button' className='wa-btn wa-btn--ghost wa-btn--small' onClick={onLoadDemo} disabled={busy}>
                 {t(lang, 'loadDemoPreview')}

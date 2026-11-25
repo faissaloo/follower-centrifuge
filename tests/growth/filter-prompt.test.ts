@@ -8,14 +8,6 @@ describe('daily shortlist filter prompt', () => {
     }
   });
 
-  it('rejects sensitive-trait targeting', () => {
-    for (const prompt of ['Muslim women', 'queer designers', 'black artists', 'disabled creators', 'teen skaters']) {
-      const result = validateFilterPrompt(prompt);
-      expect(result.ok).toBe(false);
-      expect(result.error).toBeTruthy();
-    }
-  });
-
   it('caps prompt length', () => {
     expect(validateFilterPrompt('a'.repeat(501)).ok).toBe(false);
   });

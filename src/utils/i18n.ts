@@ -419,8 +419,8 @@ const en = {
   keySetupHint: 'Keys live in sessionStorage and disappear when this tab closes.',
 
   dailyTitle: 'daily 20',
-  dailyIntro: '20 accounts linked to your network. read-only.',
-  dailyReadOnly: 'read-only',
+  dailyIntro: '20 accounts linked to your network. manual follows only.',
+  dailyReadOnly: 'manual follows',
   dailyFilterLabel: 'filter prompt',
   dailyFilterPlaceholder: 'what kind of accounts?',
   dailySaveFilter: 'save filter',
@@ -439,6 +439,13 @@ const en = {
   dailyFar: 'further out',
   dailySourceCount: 'via %s follows',
   dailySource: 'via @%s',
+
+  dailyOpen: 'daily 20 →',
+  dailyBack: '← back',
+  dailyFollow: 'follow',
+  dailyRequestFollow: 'request follow',
+  dailyFollowing: 'following…',
+  dailyRequested: 'requested',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -864,8 +871,8 @@ const es: Record<TranslationKey, string> = {
   keySetupHint: 'Las claves viven en sessionStorage y desaparecen al cerrar la pestaña.',
 
   dailyTitle: 'daily 20',
-  dailyIntro: '20 cuentas vinculadas a tu red. solo lectura.',
-  dailyReadOnly: 'solo lectura',
+  dailyIntro: '20 cuentas vinculadas a tu red. follows manuales.',
+  dailyReadOnly: 'follows manuales',
   dailyFilterLabel: 'filtro',
   dailyFilterPlaceholder: '¿qué tipo de cuentas?',
   dailySaveFilter: 'guardar filtro',
@@ -884,6 +891,13 @@ const es: Record<TranslationKey, string> = {
   dailyFar: 'más lejos en tu red',
   dailySourceCount: 'vía %s follows',
   dailySource: 'vía @%s',
+
+  dailyOpen: 'daily 20 →',
+  dailyBack: '← volver',
+  dailyFollow: 'seguir',
+  dailyRequestFollow: 'pedir follow',
+  dailyFollowing: 'siguiendo…',
+  dailyRequested: 'pedido',
 
 };
 

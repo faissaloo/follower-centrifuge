@@ -239,6 +239,63 @@ export async function isStillFollower(user: { readonly id: string; readonly user
   }
 }
 
+export type FollowOutcome = 'following' | 'requested' | 'failed' | 'blocked';
+
+export interface FollowResult {
+  readonly outcome: FollowOutcome;
+  readonly detail: string;
+}
+
+/**
+ * Follow one account (or send a follow request for a private account) using
+ * Instagram's own `/api/v1/friendships/create/<id>/` endpoint. This is only
+ * called from an explicit per-row button, never automatically.
+ */
+export async function followUser(
+  user: { readonly id: string; readonly username: string },
+  csrftoken: string,
+): Promise<FollowResult> {
+  const res = await fetchWithTimeout(
+    `https://www.instagram.com/api/v1/friendships/create/${encodeURIComponent(user.id)}/`,
+    {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'x-ig-app-id': INSTAGRAM_WEB_APP_ID,
+        'x-csrftoken': csrftoken,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: '',
+    },
+  );
+  const text = await res.text().catch(() => '');
+  let data: any = null;
+  try {
+    data = JSON.parse(text.replace(/^for \(;;\);/, ''));
+  } catch {
+    // Reported below.
+  }
+  const errorText = JSON.stringify(data?.errors ?? data?.error ?? '') + ` ${data?.message ?? ''} ${data?.errorSummary ?? ''}`;
+  const isActionBlocked =
+    res.status === 429 ||
+    data?.spam === true ||
+    /feedback_required|checkpoint|action_blocked|try again later|rate limit/i.test(errorText);
+  if (isActionBlocked) {
+    return { outcome: 'blocked', detail: `HTTP ${res.status}: ${errorText.trim()}` };
+  }
+  const status = data?.friendship_status;
+  if (res.ok && data !== null && data.status === 'ok' && typeof status === 'object' && status !== null) {
+    if (status.following === true) {
+      return { outcome: 'following', detail: 'confirmed' };
+    }
+    if (status.outgoing_request === true) {
+      return { outcome: 'requested', detail: 'request sent' };
+    }
+  }
+  const body = data === null ? text.slice(0, 300) : JSON.stringify(data).slice(0, 1000);
+  return { outcome: 'failed', detail: `HTTP ${res.status}, body ${body}` };
+}
+
 // Removes one of the viewer's followers exactly like instagram.com's own
 // "Remove" button: POST the private friendships/remove_follower endpoint with
 // the page's fb_dtsg token in the form body. The endpoint answers with

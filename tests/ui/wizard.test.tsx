@@ -38,6 +38,13 @@ describe('NukeWizard (step 1)', () => {
     expect(onNuke.mock.calls[0][0]).toBe('machine');
   });
 
+  it('opens the Daily 20 page from the quiet links', () => {
+    const onOpenGrowth = vi.fn();
+    render(<NukeWizard {...wizardProps({ onOpenGrowth })} />);
+    fireEvent.click(screen.getByRole('button', { name: t('en', 'dailyOpen') }));
+    expect(onOpenGrowth).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps advanced setup out of the way behind a quiet link', () => {
     const onOpenAdvanced = vi.fn();
     render(<NukeWizard {...wizardProps({ onOpenAdvanced })} />);

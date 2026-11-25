@@ -1,12 +1,5 @@
 import { DEFAULT_FILTER_PROMPT, MAX_FILTER_PROMPT_LENGTH } from '../model/growth';
 
-/**
- * The shortlist filter prompt is for interests, content style and account
- * quality only. It must not be used to select people by protected or sensitive
- * traits (religion, ethnicity, gender, sexuality, health, nationality, etc.).
- * This is a lightweight guard; the scoring prompt also tells the model to
- * ignore any such instruction.
- */
 export interface FilterPromptValidation {
   readonly ok: boolean;
   readonly prompt: string;

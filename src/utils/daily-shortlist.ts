@@ -49,6 +49,9 @@ return null;
     ...(typeof value.networkDistance === 'number' && isFinite(value.networkDistance)
       ? { networkDistance: Math.max(0, Math.min(1, value.networkDistance)) }
       : {}),
+    ...(value.followState === 'requested' || value.followState === 'following'
+      ? { followState: value.followState }
+      : {}),
   };
 }
 

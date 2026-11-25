@@ -7,7 +7,7 @@
  * verification logic are covered instead of only mocked away.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCookie, isStillFollowing, removeFollower, unfollowUser } from '../../src/utils/utils';
+import { followUser, getCookie, isStillFollowing, removeFollower, unfollowUser } from '../../src/utils/utils';
 import { INSTAGRAM_UNFOLLOW_DOC_ID, INSTAGRAM_UNFOLLOW_FRIENDLY_NAME } from '../../src/constants/constants';
 
 interface FakeResponseInit {
@@ -234,6 +234,27 @@ describe('remove follower transport', () => {
     fetchMock.mockResolvedValue(fakeResponse({ json: { status: 'fail', message: 'nope' } }));
     const result = await removeFollower({ id: '1', username: 'target' }, 'csrf-token');
     expect(result.outcome).toBe('failed');
+  });
+});
+
+describe('follow transport', () => {
+  it('posts to the follow endpoint and reports a private follow request', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ json: { status: 'ok', friendship_status: { following: false, outgoing_request: true } } }));
+    const result = await followUser({ id: '123', username: 'private.account' }, 'csrf-token');
+    expect(result.outcome).toBe('requested');
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://www.instagram.com/api/v1/friendships/create/123/');
+    expect(options.method).toBe('POST');
+    expect(options.body).toBe('');
+    const headers = options.headers as Record<string, string>;
+    expect(headers['x-ig-app-id']).toBe('936619743392459');
+    expect(headers['x-csrftoken']).toBe('csrf-token');
+  });
+
+  it('reports a confirmed follow for a public account', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ json: { status: 'ok', friendship_status: { following: true } } }));
+    const result = await followUser({ id: '456', username: 'public.account' }, 'csrf-token');
+    expect(result.outcome).toBe('following');
   });
 });
 

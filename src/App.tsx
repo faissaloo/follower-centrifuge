@@ -13,7 +13,7 @@ import {
 import { AuditCandidate, AuditFilter, AuditTab, DEFAULT_AUDIT_FILTER, FetchListFn, FetchListUser } from './model/audit';
 import { GenderCategory } from './model/gender';
 import { DeepSeekConfig, HAS_EMBEDDED_DEEPSEEK_KEY, HAS_EMBEDDED_TYPESAFE_KEY } from './model/deepseek-config';
-import { DailyShortlistState, SHORTLIST_STATE_VERSION } from './model/growth';
+import { DailyShortlistState, SHORTLIST_STATE_VERSION, ShortlistCandidate } from './model/growth';
 import { probeRelayConnection, relayUrlCandidates, relayWillBeUsed } from './utils/classifier-relay';
 import { UnfollowPlan } from './model/action-plan';
 import { AppState, ExecutingState, ReviewState, ScanningState } from './model/state';
@@ -50,12 +50,12 @@ import { createFriendshipsListFetcher } from './utils/friendships-list';
 import { getInitialLanguage, Language, saveLanguage, t } from './utils/i18n';
 import { loadReviewCache, ReviewCacheRecord, saveReviewCache } from './utils/review-cache';
 import { loadTimings, loadWhitelist, saveTimings, saveWhitelist } from './utils/whitelist-manager';
-import { copyListToClipboard, exportToCSV, exportToJSON, fetchFriendshipsPage, fetchUserProfileInfo, getCookie, isStillFollower, isStillFollowing, removeFollower, sleep, unfollowUser } from './utils/utils';
+import { copyListToClipboard, exportToCSV, exportToJSON, fetchFriendshipsPage, fetchUserProfileInfo, followUser, getCookie, isStillFollower, isStillFollowing, removeFollower, sleep, unfollowUser } from './utils/utils';
 import { buildWhitelistProtection, isProtectedByWhitelist, withoutProtectionFor } from './utils/whitelist-match';
 import { runAccountAudit } from './utils/account-audit';
 
 import { NukeWizard } from './components/NukeWizard';
-import { DailyShortlist } from './components/DailyShortlist';
+import { DailyShortlistPage } from './components/DailyShortlist';
 import { ScanningScreen } from './components/ScanningScreen';
 import { ClassifierAttribution, ReviewScreen } from './components/ReviewScreen';
 import { ExecutingScreen } from './components/ExecutingScreen';
@@ -307,6 +307,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   const [shortlistProgress, setShortlistProgress] = useState<string | undefined>(undefined);
   const [shortlistError, setShortlistError] = useState<string | undefined>(undefined);
   const [shortlistPromptError, setShortlistPromptError] = useState<string | undefined>(undefined);
+  const [growthOpen, setGrowthOpen] = useState(false);
   const shortlistBusyRef = useRef(false);
   const shortlistAttemptAtRef = useRef(0);
   const shortlistKeysReady = isTypeSafeConfigured(deepSeekConfig);
@@ -409,6 +410,41 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
     setShortlistPromptError(undefined);
     setShortlistError(undefined);
   }, []);
+  const handleFollowShortlistCandidate = useCallback(
+    async (candidate: ShortlistCandidate): Promise<{ ok: boolean; state?: 'requested' | 'following'; message?: string }> => {
+      if (candidate.followState !== undefined) {
+        return { ok: true, state: candidate.followState };
+      }
+      const csrf = getCookie('csrftoken');
+      if (csrf === null) {
+        return { ok: false, message: 'instagram session token missing — refresh instagram and try again.' };
+      }
+      try {
+        const result = await followUser({ id: candidate.id, username: candidate.username }, csrf);
+        if (result.outcome === 'following' || result.outcome === 'requested') {
+          const followState: 'requested' | 'following' = result.outcome === 'requested' ? 'requested' : 'following';
+          setShortlistState(previous => {
+            if (previous === null) {
+              return previous;
+            }
+            const next = {
+              ...previous,
+              entries: previous.entries.map(entry =>
+                entry.username === candidate.username ? { ...entry, followState } : entry,
+              ),
+            };
+            saveShortlistState(next);
+            return next;
+          });
+          return { ok: true, state: followState };
+        }
+        return { ok: false, message: result.detail };
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : 'follow request failed' };
+      }
+    },
+    [],
+  );
   useEffect(() => {
     if (demoMode || shortlistDisabledReason !== undefined) {
       return undefined;
@@ -1208,8 +1244,24 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   let markup: React.JSX.Element;
   switch (state.status) {
     case 'initial':
-      markup = (
-        <>
+      markup = growthOpen ? (
+        <DailyShortlistPage
+          lang={lang}
+          prompt={shortlistPrompt}
+          state={shortlistState}
+          busy={shortlistBusy}
+          progress={shortlistProgress}
+          error={shortlistError}
+          promptError={shortlistPromptError}
+          disabledReason={shortlistDisabledReason}
+          onSavePrompt={handleSaveShortlistPrompt}
+          onRefresh={() => {
+            void runShortlistRefresh(true);
+          }}
+          onFollow={handleFollowShortlistCandidate}
+          onBack={() => setGrowthOpen(false)}
+        />
+      ) : (
         <NukeWizard
           lang={lang}
           onNuke={startScan}
@@ -1224,27 +1276,13 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           onRetryRelay={() => {
             void runRelayCheck();
           }}
+          onOpenGrowth={() => setGrowthOpen(true)}
           onLoadDemo={demoMode ? loadDemoReview : undefined}
           cachedScanCount={cachedReview !== null ? cachedReview.candidates.length : undefined}
           onLoadCached={cachedReview !== null ? loadCachedReview : undefined}
           scanDisabled={!demoMode && getCookie('ds_user_id') === null}
           scanDisabledReason={t(lang, 'scanFailedFollowing')}
         />
-        <DailyShortlist
-            lang={lang}
-            prompt={shortlistPrompt}
-            state={shortlistState}
-            busy={shortlistBusy}
-            progress={shortlistProgress}
-            error={shortlistError}
-            promptError={shortlistPromptError}
-            disabledReason={shortlistDisabledReason}
-            onSavePrompt={handleSaveShortlistPrompt}
-            onRefresh={() => {
-              void runShortlistRefresh(true);
-            }}
-          />
-        </>
       );
       break;
     case 'scanning':

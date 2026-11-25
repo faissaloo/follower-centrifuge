@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DEEPSEEK_CONFIG, DeepSeekConfig } from '../../src/model/deepseek-config';
 import { ShortlistCandidate } from '../../src/model/growth';
-import { filterShortlistCandidates, ProfileFilterError } from '../../src/utils/profile-filter';
+import { filterShortlistCandidates } from '../../src/utils/profile-filter';
 
 interface BiasedCandidate extends ShortlistCandidate {
   readonly scoreBias: number;

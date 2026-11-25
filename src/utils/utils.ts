@@ -605,34 +605,81 @@ export async function fetchUserProfileInfoById(userId: string): Promise<ProfileI
   if (!/^\d+$/.test(userId)) {
     throw new InstagramApiError(400, 'profile lookup needs a numeric user id');
   }
-  const url = `https://www.instagram.com/api/v1/users/${encodeURIComponent(userId)}/info/`;
-  const response = await fetchWithTimeout(url, {
-    credentials: 'same-origin',
-    headers: profileHeaders(getCookie('csrftoken') || ''),
-  });
-  if (!response.ok) {
-    throw new InstagramApiError(response.status, `Instagram returned HTTP ${response.status} for a profile lookup`);
+  for (const host of ['www.instagram.com', 'i.instagram.com']) {
+    try {
+      const response = await fetchWithTimeout(`https://${host}/api/v1/users/${encodeURIComponent(userId)}/info/`, {
+        credentials: host === 'www.instagram.com' ? 'same-origin' : 'include',
+        headers: profileHeaders(getCookie('csrftoken') || ''),
+      });
+      if (response.ok) {
+        const payload = (await response.json()) as { user?: Record<string, unknown> };
+        if (payload.user !== undefined) {
+          return profileFromUser(payload.user, userId);
+        }
+      }
+    } catch {
+      // Try the next host.
+    }
   }
-  const payload = (await response.json()) as { user?: Record<string, unknown> };
-  if (payload.user === undefined) {
-    throw new InstagramApiError(response.status, 'Instagram returned no profile data');
-  }
-  return profileFromUser(payload.user, userId);
+  throw new InstagramApiError(404, 'Instagram returned no profile data');
 }
 
 /** Best-effort username -> user resolution for manually pasted seeds. */
+const PROFILE_ID_PATTERNS = [
+  /"profile_id"\s*:\s*"(\d+)"/,
+  /"user_id"\s*:\s*"(\d+)"/,
+  /"props"\s*:\s*\{[^}]*"user_id"\s*:\s*"(\d+)"/,
+  /profilePage_(\d+)/,
+  /"pk"\s*:\s*"?([0-9]{5,})"?/,
+];
+
+function profileIdFromHtml(html: string): string | null {
+  for (const pattern of PROFILE_ID_PATTERNS) {
+    const match = pattern.exec(html);
+    if (match !== null) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+function profileFromResolvedId(id: string, username: string): ProfileInfo {
+  return {
+    id,
+    username,
+    fullName: '',
+    biography: '',
+    profilePicUrl: '',
+    isPrivate: false,
+    isVerified: false,
+    followerCount: 0,
+    followingCount: 0,
+  };
+}
+
 export async function resolveUserByUsername(username: string): Promise<ProfileInfo> {
-  try {
-    return await fetchUserProfileInfo(username);
-  } catch {
-    // web_profile_info is unreliable for logged-in callers.
+  const headers = profileHeaders(getCookie('csrftoken') || '');
+  // Mobile-style username info endpoints; often still answer when the web
+  // profile endpoint is serving false 404s.
+  for (const url of [
+    `https://www.instagram.com/api/v1/users/${encodeURIComponent(username)}/usernameinfo/`,
+    `https://www.instagram.com/api/v1/users/${encodeURIComponent(username)}/info/`,
+  ]) {
+    try {
+      const response = await fetchWithTimeout(url, { credentials: 'same-origin', headers });
+      if (response.ok) {
+        const payload = (await response.json()) as { user?: Record<string, unknown> };
+        if (payload.user !== undefined) {
+          return profileFromUser(payload.user, username);
+        }
+      }
+    } catch {
+      // Try the next representation.
+    }
   }
   try {
-    const url = `https://www.instagram.com/api/v1/web/search/topsearch/?context=blended&query=${encodeURIComponent(username)}`;
-    const response = await fetchWithTimeout(url, {
-      credentials: 'same-origin',
-      headers: profileHeaders(getCookie('csrftoken') || ''),
-    });
+    const searchUrl = `https://www.instagram.com/web/search/topsearch/?context=blended&query=${encodeURIComponent(username)}`;
+    const response = await fetchWithTimeout(searchUrl, { credentials: 'same-origin', headers });
     if (response.ok) {
       const payload = (await response.json()) as { users?: Array<{ user?: Record<string, unknown> }> };
       const match = (payload.users ?? [])
@@ -643,38 +690,44 @@ export async function resolveUserByUsername(username: string): Promise<ProfileIn
       }
     }
   } catch {
-    // Fall through to the profile page.
+    // Fall through.
   }
-  // Last resort: the profile HTML includes the numeric id even when the JSON
-  // endpoints 404. Seed discovery needs only that id.
-  const page = await fetchWithTimeout(`https://www.instagram.com/${encodeURIComponent(username)}/`, {
-    credentials: 'same-origin',
-    headers: { ...profileHeaders(getCookie('csrftoken') || ''), Accept: 'text/html' },
-  });
-  if (!page.ok) {
-    throw new InstagramApiError(page.status, `Instagram returned HTTP ${page.status} for @${username}`);
+  // The profile JSON endpoint sometimes still works with the __a flag.
+  try {
+    const response = await fetchWithTimeout(
+      `https://www.instagram.com/${encodeURIComponent(username)}/?__a=1&__d=dis`,
+      { credentials: 'same-origin', headers },
+    );
+    if (response.ok) {
+      const payload = (await response.json()) as { user?: Record<string, unknown>; data?: { user?: Record<string, unknown> } };
+      const user = payload.user ?? payload.data?.user;
+      if (user !== undefined) {
+        return profileFromUser(user, username);
+      }
+    }
+  } catch {
+    // Fall through to HTML.
   }
-  const html = await page.text();
-  const patterns = [
-    /"profile_id"\s*:\s*"(\d+)"/,
-    /"user_id"\s*:\s*"(\d+)"/,
-    /"props"\s*:\s*\{[^}]*"user_id"\s*:\s*"(\d+)"/,
-    /profilePage_(\d+)/,
+  // The profile HTML includes the numeric id even when the JSON endpoints 404.
+  // Try the profile page first, then the embed page.
+  const htmlUrls = [
+    `https://www.instagram.com/${encodeURIComponent(username)}/`,
+    `https://www.instagram.com/${encodeURIComponent(username)}/embed/`,
   ];
-  for (const pattern of patterns) {
-    const match = pattern.exec(html);
-    if (match !== null) {
-      return {
-        id: match[1],
-        username,
-        fullName: '',
-        biography: '',
-        profilePicUrl: '',
-        isPrivate: false,
-        isVerified: false,
-        followerCount: 0,
-        followingCount: 0,
-      };
+  for (const url of htmlUrls) {
+    try {
+      const page = await fetchWithTimeout(url, {
+        credentials: 'same-origin',
+        headers: { ...headers, Accept: 'text/html' },
+      });
+      if (page.ok) {
+        const id = profileIdFromHtml(await page.text());
+        if (id !== null) {
+          return profileFromResolvedId(id, username);
+        }
+      }
+    } catch {
+      // Try the next representation.
     }
   }
   throw new InstagramApiError(404, `could not resolve @${username} to an instagram id`);

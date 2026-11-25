@@ -415,12 +415,26 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
         }
         return users;
       };
+      // Reuse the viewer's following page for seed resolution and discovery.
+      const viewerFollowingPromise = fetchFriendshipsPage('following', undefined, 50);
+      const viewerFollowingUsers = (await viewerFollowingPromise.catch(() => null))?.users ?? [];
+      const viewerFollowingByName = new Map(
+        viewerFollowingUsers
+          .filter(user => typeof user.username === 'string')
+          .map(user => [String(user.username).toLowerCase(), user]),
+      );
       const manualSeedUsers: FetchListUser[] = [];
       const unresolvedSeeds: string[] = [];
       if (shortlistSeeds.length > 0) {
         setShortlistProgress(`resolving seed accounts (0/${shortlistSeeds.length})…`);
       }
       for (const username of shortlistSeeds) {
+        const knownSeed = viewerFollowingByName.get(username.toLowerCase());
+        if (knownSeed !== undefined) {
+          manualSeedUsers.push(knownSeed);
+          setShortlistProgress(`resolving seed accounts (${manualSeedUsers.length}/${shortlistSeeds.length})…`);
+          continue;
+        }
         try {
           const profile = await cachedProfileFetch({ username });
           manualSeedUsers.push({
@@ -445,7 +459,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
       }
       const preferredSeeds = [...manualSeedUsers, ...preferredCachedSeeds(graphCache, cacheNow)];
       const candidates = await discoverGrowthCandidates({
-        fetchViewerFollowing: async () => (await fetchFriendshipsPage('following', undefined, 50)).users ?? [],
+        fetchViewerFollowing: async () => (await viewerFollowingPromise.catch(() => null))?.users ?? [],
         fetchSeedFollowing,
         fetchSeedFollowers,
         fetchProfile: cachedProfileFetch,

@@ -52,6 +52,9 @@ return null;
     ...(value.followState === 'requested' || value.followState === 'following'
       ? { followState: value.followState }
       : {}),
+    ...(typeof value.photoCues === 'string' && value.photoCues !== ''
+      ? { photoCues: value.photoCues.slice(0, 240) }
+      : {}),
   };
 }
 

@@ -1323,7 +1323,7 @@ async function buildVisionCueUserContent(
 }
 
 
-function createPhotoCueDescriber(
+export function createPhotoCueDescriber(
   config: DeepSeekConfig,
   deps: DeepSeekGenderClassifierDeps,
 ): (users: readonly GenderInput[]) => Promise<ReadonlyMap<string, string>> {

@@ -42,6 +42,8 @@ export interface ShortlistCandidate {
   readonly networkDistance?: number;
   /** Result of a manual follow button press, if one has happened. */
   readonly followState?: 'requested' | 'following';
+  /** Neutral visual cues used by the shortlist filter (not shown in the UI). */
+  readonly photoCues?: string;
 }
 
 export type MatchStrength = 'strong' | 'good' | 'maybe' | 'weak';

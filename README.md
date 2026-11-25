@@ -42,7 +42,8 @@ The launch screen also has a **Daily 20** panel: up to 20 public accounts linked
 
 - **Discovery:** samples up to 6 accounts you follow, reads one page of their following lists (up to 24 each), de-duplicates against accounts you follow and the last 30 days, then reads at most 50 public profiles. If a profile read fails, the following-list row is kept so one bad endpoint doesn't empty the whole shortlist. Requests use randomised 0.9–3.6 s gaps and hard daily caps.
 - **Profile cache:** successful public profile reads are cached for 7 days; profiles confirmed unavailable (403/404/410) are skipped for 24 hours. Private accounts are included — their raw following-list data is used when the public profile read is unavailable.
-- **Filter prompt:** stored in `localStorage` so it survives a script restart. It's for interests, content style and account quality only — sensitive-trait filtering (religion, ethnicity, gender, sexuality, health, nationality, age) is rejected by a guard. The prompt is scored by Jev only.
+- **Filter prompt:** stored in `localStorage` so it survives a script restart. It's for interests, content style and account quality only — sensitive-trait filtering (religion, ethnicity, gender, sexuality, health, nationality, age) is rejected by a guard. Jev makes the match decision. The exact Jev prompt lives in [src/prompts/daily-shortlist.ts](src/prompts/daily-shortlist.ts).
+- **Profile pictures:** Jev can't read images, so when DeepSeek vision is configured the public profile photo is first described as neutral visual cues and those `photo_cues` are passed to Jev alongside the names/bio. Jev remains the only decision-maker; without DeepSeek the filter falls back to text-only cues.
 - **Match strength:** every candidate shows a **strong / good / maybe / weak** badge and percentage, plus which of your follows surfaced it.
 - **Further out, not too close:** candidates surfaced by more of your sampled follows are treated as closer to your network; candidates found through only one follow get a distance boost in the ranking. **Private accounts get a small extra boost** because a manual follow request is a higher-yield outcome; strong filter matches still dominate.
 - **Manual actions:** the shortlist only sends a follow when you press its button. There is no automatic following, unfollowing or follow/unfollow cycling.
@@ -145,7 +146,7 @@ Open `http://localhost:8080/?preview=review`, press **COPY**, and paste the scri
 ## 🧪 Verification & tests
 
 ```bash
-npm test                 # 878 tests / 57 files (unit, component, integration, safety)
+npm test                 # 880 tests / 58 files (unit, component, integration, safety)
 npm run test:coverage    # coverage thresholds
 npm run verify           # typecheck app + tests, lint, tests
 npm run check:classifier # MANUAL real-API check (synthetic names only; uses .typesafe-key/.deepseek-key)
@@ -180,10 +181,11 @@ src/
     growth-discovery.ts  # bounded 2-hop candidate discovery
     profile-filter.ts    # Jev/DeepSeek filter scoring
     daily-shortlist.ts   # prompt/state localStorage + 24h due logic
+    prompts/daily-shortlist.ts # exact Jev prompt for the shortlist filter
     i18n.ts              # EN/ES
   components/
     NukeWizard.tsx       # wizard step 1: pick the category to nuke
-    DailyShortlist.tsx   # read-only Daily 20 recommendations
+    DailyShortlist.tsx   # Daily 20 page, rows, manual follow buttons
     WizardSteps.tsx      # pick -> dry run -> nuke step indicator
     Centrifuge.tsx       # decorative enrichment-cascade animation
   preview/demo-data.ts   # synthetic offline dataset

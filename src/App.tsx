@@ -417,12 +417,35 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
       };
       // Reuse the viewer's following page for seed resolution and discovery.
       const viewerFollowingPromise = fetchFriendshipsPage('following', undefined, 50);
-      const viewerFollowingUsers = (await viewerFollowingPromise.catch(() => null))?.users ?? [];
+      const firstViewerPage = await viewerFollowingPromise.catch(() => null);
+      const viewerFollowingUsers: FetchListUser[] = [...(firstViewerPage?.users ?? [])];
+      const seedUsernames = new Set(shortlistSeeds.map(username => username.toLowerCase()));
+      // Seeds may be followed but outside the first page. Walk a bounded number
+      // of extra pages to find their ids instead of failing resolution.
+      let nextViewerPageId = firstViewerPage?.next_max_id;
+      for (let pageIndex = 0; seedUsernames.size > 0 && pageIndex < 2 && nextViewerPageId !== undefined; pageIndex += 1) {
+        await sleep(500);
+        const nextPage = await fetchFriendshipsPage('following', nextViewerPageId, 50).catch(() => null);
+        if (nextPage === null) {
+          break;
+        }
+        for (const user of nextPage.users ?? []) {
+          if (typeof user.username === 'string') {
+            viewerFollowingUsers.push(user);
+          }
+        }
+        nextViewerPageId = nextPage.next_max_id;
+      }
       const viewerFollowingByName = new Map(
         viewerFollowingUsers
           .filter(user => typeof user.username === 'string')
           .map(user => [String(user.username).toLowerCase(), user]),
       );
+      for (const seed of shortlistSeeds) {
+        if (viewerFollowingByName.has(seed.toLowerCase())) {
+          seedUsernames.delete(seed.toLowerCase());
+        }
+      }
       const manualSeedUsers: FetchListUser[] = [];
       const unresolvedSeeds: string[] = [];
       if (shortlistSeeds.length > 0) {
@@ -447,6 +470,10 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           });
         } catch {
           unresolvedSeeds.push(username);
+        }
+        // Avoid looking like a burst to Instagram while resolving names.
+        if (shortlistSeeds.indexOf(username) < shortlistSeeds.length - 1) {
+          await sleep(650);
         }
         setShortlistProgress(`resolving seed accounts (${manualSeedUsers.length}/${shortlistSeeds.length})…`);
       }

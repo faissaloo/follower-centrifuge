@@ -659,24 +659,7 @@ function profileFromResolvedId(id: string, username: string): ProfileInfo {
 
 export async function resolveUserByUsername(username: string): Promise<ProfileInfo> {
   const headers = profileHeaders(getCookie('csrftoken') || '');
-  // Mobile-style username info endpoints; often still answer when the web
-  // profile endpoint is serving false 404s.
-  for (const url of [
-    `https://www.instagram.com/api/v1/users/${encodeURIComponent(username)}/usernameinfo/`,
-    `https://www.instagram.com/api/v1/users/${encodeURIComponent(username)}/info/`,
-  ]) {
-    try {
-      const response = await fetchWithTimeout(url, { credentials: 'same-origin', headers });
-      if (response.ok) {
-        const payload = (await response.json()) as { user?: Record<string, unknown> };
-        if (payload.user !== undefined) {
-          return profileFromUser(payload.user, username);
-        }
-      }
-    } catch {
-      // Try the next representation.
-    }
-  }
+  // Search first: one request and the most reliable username -> id path.
   try {
     const searchUrl = `https://www.instagram.com/web/search/topsearch/?context=blended&query=${encodeURIComponent(username)}`;
     const response = await fetchWithTimeout(searchUrl, { credentials: 'same-origin', headers });
@@ -690,31 +673,14 @@ export async function resolveUserByUsername(username: string): Promise<ProfileIn
       }
     }
   } catch {
-    // Fall through.
+    // Fall through to the profile page.
   }
-  // The profile JSON endpoint sometimes still works with the __a flag.
-  try {
-    const response = await fetchWithTimeout(
-      `https://www.instagram.com/${encodeURIComponent(username)}/?__a=1&__d=dis`,
-      { credentials: 'same-origin', headers },
-    );
-    if (response.ok) {
-      const payload = (await response.json()) as { user?: Record<string, unknown>; data?: { user?: Record<string, unknown> } };
-      const user = payload.user ?? payload.data?.user;
-      if (user !== undefined) {
-        return profileFromUser(user, username);
-      }
-    }
-  } catch {
-    // Fall through to HTML.
-  }
-  // The profile HTML includes the numeric id even when the JSON endpoints 404.
-  // Try the profile page first, then the embed page.
-  const htmlUrls = [
+  // The profile HTML includes the numeric id even when JSON endpoints 404.
+  // Keep this path short: excessive fallback requests trigger rate limits.
+  for (const url of [
     `https://www.instagram.com/${encodeURIComponent(username)}/`,
     `https://www.instagram.com/${encodeURIComponent(username)}/embed/`,
-  ];
-  for (const url of htmlUrls) {
+  ]) {
     try {
       const page = await fetchWithTimeout(url, {
         credentials: 'same-origin',
@@ -725,6 +691,29 @@ export async function resolveUserByUsername(username: string): Promise<ProfileIn
         if (id !== null) {
           return profileFromResolvedId(id, username);
         }
+      }
+    } catch {
+      // Try the next representation.
+    }
+  }
+  // Last short JSON fallbacks.
+  for (const url of [
+    `https://www.instagram.com/api/v1/users/${encodeURIComponent(username)}/usernameinfo/`,
+    `https://www.instagram.com/api/v1/users/${encodeURIComponent(username)}/info/`,
+    `https://www.instagram.com/${encodeURIComponent(username)}/?__a=1&__d=dis`,
+  ]) {
+    try {
+      const response = await fetchWithTimeout(url, { credentials: 'same-origin', headers });
+      if (!response.ok) {
+        continue;
+      }
+      const payload = (await response.json()) as {
+        user?: Record<string, unknown>;
+        data?: { user?: Record<string, unknown> };
+      };
+      const user = payload.user ?? payload.data?.user;
+      if (user !== undefined) {
+        return profileFromUser(user, username);
       }
     } catch {
       // Try the next representation.

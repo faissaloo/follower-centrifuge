@@ -20,7 +20,8 @@ import { ProfileInfo } from './utils';
  */
 export interface GrowthDiscoveryDeps {
   readonly fetchViewerFollowing: () => Promise<readonly FetchListUser[]>;
-  readonly fetchSeedFollowing: (seedId: string) => Promise<readonly FetchListUser[]>;
+  readonly fetchSeedFollowing: (seed: FetchListUser) => Promise<readonly FetchListUser[]>;
+  readonly fetchSeedFollowers: (seed: FetchListUser) => Promise<readonly FetchListUser[]>;
   readonly fetchProfile: (username: string) => Promise<ProfileInfo>;
   readonly sleep: (milliseconds: number) => Promise<void>;
   readonly random: () => number;
@@ -31,6 +32,10 @@ export interface GrowthDiscoveryDeps {
   readonly knownFollowing?: ReadonlySet<string>;
   /** Daily-shortlist de-duplication history (username -> last seen ms). */
   readonly seen?: Readonly<Record<string, number>>;
+  /** Seeds remembered from the 30-day graph cache, reused before new ones. */
+  readonly preferredSeeds?: readonly FetchListUser[];
+  /** Cache-hit predicate so cached seed lists don't trigger pacing sleeps. */
+  readonly isSeedCached?: (seedId: string) => boolean;
 }
 
 export class GrowthDiscoveryError extends Error {
@@ -83,21 +88,28 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
   (deps.knownFollowing ?? new Set<string>()).forEach(username => {
     known.add(normalizeUsername(username));
   });
-  const seeds: FetchListUser[] = [];
+  const ownerSeeds: FetchListUser[] = [];
   for (const user of ownerPage) {
     const username = normalizeUsername(user.username);
     if (username === '' || known.has(username)) {
       continue;
     }
     known.add(username);
-    seeds.push(user);
+    ownerSeeds.push(user);
   }
-  if (seeds.length === 0) {
+  const seedById = new Map<string, FetchListUser>();
+  for (const seed of [...(deps.preferredSeeds ?? []), ...shuffle(ownerSeeds, deps.random)]) {
+    const id = String(seed.pk_id ?? seed.pk ?? seed.id ?? normalizeUsername(seed.username));
+    const username = normalizeUsername(seed.username);
+    if (id !== '' && username !== '' && !seedById.has(id)) {
+      seedById.set(id, seed);
+    }
+  }
+  const sampledSeeds = Array.from(seedById.values()).slice(0, GROWTH_SEED_COUNT);
+  if (sampledSeeds.length === 0) {
     throw new GrowthDiscoveryError('no accounts you follow were found to seed the shortlist');
   }
-  const sampledSeeds = shuffle(seeds, deps.random).slice(0, GROWTH_SEED_COUNT);
   const candidates = new Map<string, ShortlistCandidate>();
-  const candidateSources = new Map<string, string>();
   let seedIndex = 0;
   for (const seed of sampledSeeds) {
     throwIfAborted(deps);
@@ -106,45 +118,68 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
     if (seedId === '' || seedUsername === '') {
       continue;
     }
-    if (seedIndex > 0) {
+    const cached = deps.isSeedCached?.(seedId) === true;
+    if (seedIndex > 0 && !cached) {
       await deps.sleep(randomBetween(deps.random, GROWTH_SEED_PACING_MS[0], GROWTH_SEED_PACING_MS[1]));
     }
     seedIndex += 1;
     deps.onProgress?.('seeds', `checking @${seedUsername} (${seedIndex}/${sampledSeeds.length})`);
     let following: readonly FetchListUser[] = [];
+    let followers: readonly FetchListUser[] = [];
     try {
-      following = await deps.fetchSeedFollowing(seedId);
+      following = await deps.fetchSeedFollowing(seed);
     } catch {
+      // One list may still be available.
+    }
+    try {
+      followers = await deps.fetchSeedFollowers(seed);
+    } catch {
+      // Keep whichever list worked.
+    }
+    if (following.length === 0 && followers.length === 0) {
       continue;
     }
-    for (const user of following) {
-      const username = normalizeUsername(user.username);
-      if (username === '' || username === seedUsername || known.has(username)) {
-        continue;
+    const perSeed = new Set<string>();
+    const lists: Array<{ readonly users: readonly FetchListUser[]; readonly type: 'following' | 'followers' }> = [
+      { users: following, type: 'following' },
+      { users: followers, type: 'followers' },
+    ];
+    for (const list of lists) {
+      for (const user of list.users) {
+        const username = normalizeUsername(user.username);
+        if (username === '' || username === seedUsername || known.has(username) || perSeed.has(username)) {
+          continue;
+        }
+        perSeed.add(username);
+        const via = `@${seedUsername} · ${list.type}`;
+        const existing = candidates.get(username);
+        if (existing !== undefined) {
+          candidates.set(username, {
+            ...existing,
+            sourceCount: (existing.sourceCount ?? 1) + 1,
+            discoveredVia: [...(existing.discoveredVia ?? []), via].slice(0, 8),
+          });
+          continue;
+        }
+        if (wasSeenRecently(deps.seen, username, now)) {
+          continue;
+        }
+        candidates.set(username, {
+          id: String(user.pk_id ?? user.pk ?? user.id ?? username),
+          username,
+          fullName: user.full_name ?? '',
+          biography: '',
+          profilePicUrl: user.profile_pic_url ?? '',
+          isPrivate: user.is_private ?? false,
+          isVerified: user.is_verified ?? false,
+          followerCount: 0,
+          followingCount: 0,
+          score: 0,
+          sourceUsername: seedUsername,
+          discoveredVia: [via],
+          sourceCount: 1,
+        });
       }
-      const existing = candidates.get(username);
-      if (existing !== undefined) {
-        candidates.set(username, { ...existing, sourceCount: (existing.sourceCount ?? 1) + 1 });
-        continue;
-      }
-      if (wasSeenRecently(deps.seen, username, now)) {
-        continue;
-      }
-      candidates.set(username, {
-        id: String(user.pk_id ?? user.pk ?? user.id ?? username),
-        username,
-        fullName: user.full_name ?? '',
-        biography: '',
-        profilePicUrl: user.profile_pic_url ?? '',
-        isPrivate: user.is_private ?? false,
-        isVerified: user.is_verified ?? false,
-        followerCount: 0,
-        followingCount: 0,
-        score: 0,
-        sourceUsername: seedUsername,
-        sourceCount: 1,
-      });
-      candidateSources.set(username, seedUsername);
     }
   }
   if (candidates.size === 0) {
@@ -177,7 +212,8 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
         isVerified: profile.isVerified,
         followerCount: profile.followerCount,
         followingCount: profile.followingCount,
-        sourceUsername: candidateSources.get(candidate.username) ?? candidate.sourceUsername,
+        sourceUsername: candidate.sourceUsername,
+        discoveredVia: candidate.discoveredVia,
         sourceCount: candidate.sourceCount ?? 1,
       });
     } catch {

@@ -34,8 +34,10 @@ export interface ShortlistCandidate {
   readonly followingCount: number;
   /** Filter-match score, 0..1. */
   readonly score: number;
-  /** Public account whose following list surfaced this candidate. */
+  /** Public account whose list surfaced this candidate. */
   readonly sourceUsername?: string;
+  /** Every place this account was found, e.g. "@seed · following". */
+  readonly discoveredVia?: readonly string[];
   /** How many sampled follows led to this account (>1 = closer to your network). */
   readonly sourceCount?: number;
   /** 0..1 novelty/distance score; higher means further out from your network. */

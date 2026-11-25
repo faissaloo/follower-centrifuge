@@ -11,6 +11,7 @@ describe('growth discovery', () => {
     const result = await discoverGrowthCandidates({
       fetchViewerFollowing: async () => [user('seed1', 'seed_one')],
       fetchSeedFollowing: async () => [user('c1', 'private_candidate'), user('c2', 'public_candidate')],
+      fetchSeedFollowers: async () => [],
       fetchProfile: async () => {
         throw new Error('profile endpoint down');
       },
@@ -21,6 +22,33 @@ describe('growth discovery', () => {
     expect(result).toHaveLength(2);
     expect(result.every(candidate => candidate.biography === '')).toBe(true);
     expect(result.map(candidate => candidate.username)).toContain('private_candidate');
+  });
+
+  it('records how each account was discovered and uses both seed lists', async () => {
+    const result = await discoverGrowthCandidates({
+      fetchViewerFollowing: async () => [user('seed1', 'seed_one')],
+      fetchSeedFollowing: async () => [user('f1', 'via_following')],
+      fetchSeedFollowers: async () => [user('r1', 'via_followers')],
+      fetchProfile: async username => ({
+        id: username,
+        username,
+        fullName: username,
+        biography: `${username} bio`,
+        profilePicUrl: '',
+        isPrivate: false,
+        isVerified: false,
+        followerCount: 10,
+        followingCount: 10,
+      }),
+      sleep: async () => undefined,
+      random: () => 0.5,
+      now: () => 1_000_000,
+    });
+    const followingCandidate = result.find(candidate => candidate.username === 'via_following');
+    const followerCandidate = result.find(candidate => candidate.username === 'via_followers');
+    expect(followingCandidate?.discoveredVia).toEqual(['@seed_one · following']);
+    expect(followerCandidate?.discoveredVia).toEqual(['@seed_one · followers']);
+    expect(followingCandidate?.biography).toBe('via_following bio');
   });
 
   it('samples follows, skips known/seen accounts, and counts repeated sources', async () => {
@@ -38,10 +66,11 @@ describe('growth discovery', () => {
     const sleep = vi.fn(async () => undefined);
     const result = await discoverGrowthCandidates({
       fetchViewerFollowing: async () => [user('seed1', 'seed_one'), user('seed2', 'seed_two')],
-      fetchSeedFollowing: async seedId =>
-        seedId === 'seed1'
+      fetchSeedFollowing: async seed =>
+        seed.username === 'seed_one'
           ? [user('c1', 'candidate_one'), user('c2', 'candidate_two'), user('known', 'already_followed')]
           : [user('c2', 'candidate_two'), user('c3', 'candidate_three'), user('seen', 'seen_before')],
+      fetchSeedFollowers: async () => [],
       fetchProfile: async username => profile(username),
       sleep,
       random: () => 0.5,

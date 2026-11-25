@@ -439,6 +439,8 @@ const en = {
   dailyFar: 'further out',
   dailySourceCount: 'via %s follows',
   dailySource: 'via @%s',
+  dailyVia: 'via %s',
+  dailyViaMore: '+%s more',
 
   dailyOpen: 'daily 20 →',
   dailyBack: '← back',
@@ -891,6 +893,8 @@ const es: Record<TranslationKey, string> = {
   dailyFar: 'más lejos en tu red',
   dailySourceCount: 'vía %s follows',
   dailySource: 'vía @%s',
+  dailyVia: 'vía %s',
+  dailyViaMore: '+%s más',
 
   dailyOpen: 'daily 20 →',
   dailyBack: '← volver',

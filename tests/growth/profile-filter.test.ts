@@ -68,11 +68,17 @@ describe('profile filter scoring', () => {
   });
 
   it('passes neutral profile-photo cues into the Jev state', async () => {
-    const withPhoto = { ...candidate(1, 0.8, 1), profilePicUrl: 'https://cdn.example/avatar.jpg' };
+    const withPhoto = {
+      ...candidate(1, 0.8, 1),
+      profilePicUrl: 'https://cdn.example/avatar.jpg',
+      discoveredVia: ['@seed · following'],
+    };
     let observedPhotoCues: unknown;
+    let observedState: Record<string, unknown> | undefined;
     const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { state: { candidates: Array<Record<string, unknown>> }; questions: Record<string, unknown> };
       observedPhotoCues = body.state.candidates[0].photo_cues;
+      observedState = body.state.candidates[0];
       const answers: Record<string, unknown> = {};
       for (const key of Object.keys(body.questions)) {
         answers[key] = { type: 'choice', choice: 'match', confidence: 0.8, probabilities: { match: 0.8, maybe: 0.1, no: 0.1 } };
@@ -84,6 +90,8 @@ describe('profile filter scoring', () => {
       describePhotos: async () => new Map([['1', 'photo shows a ceramics studio shelf']]),
     });
     expect(observedPhotoCues).toBe('photo shows a ceramics studio shelf');
+    expect(observedState?.biography).toBe('posts process work');
+    expect(observedState?.discovered_via).toEqual(['@seed · following']);
   });
 
   it('gives private profiles a modest ranking boost', async () => {

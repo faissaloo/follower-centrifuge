@@ -2,7 +2,7 @@
 export function shortlistJevInstructions(accountNumber: number): string {
   return (
     `Judge whether candidate ${accountNumber} matches the user's filter and looks like a real account posting original content. ` +
-    'Use the public username, display name, biography and follower/following counts. ' +
+    'Use the public username, display name, biography, follower/following counts and discovered_via. discovered_via shows which of the user\'s follows led here; treat it as a weak network signal, not content. ' +
     'If photo_cues are present, treat them as useful evidence about the account\'s presentation/style and use them together with the bio and names — never from the photo alone. ' +
     'Be strict about brands, reposters and obvious bots.'
   );
@@ -16,7 +16,7 @@ export const SHORTLIST_JEV_CRITERIA: Record<string, string> = {
 };
 
 /** State header repeated for every Jev batch. */
-export function shortlistJevStateHeader(filterPrompt: string): { readonly filter_prompt: string; } {
+export function shortlistJevStateHeader(filterPrompt: string): { readonly filter_prompt: string } {
   return {
     filter_prompt: filterPrompt.slice(0, 500),
   };

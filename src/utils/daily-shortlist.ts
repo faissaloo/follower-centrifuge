@@ -43,6 +43,14 @@ return null;
     followingCount: typeof value.followingCount === 'number' && isFinite(value.followingCount) ? Math.max(0, value.followingCount) : 0,
     score: typeof value.score === 'number' && isFinite(value.score) ? Math.max(0, Math.min(1, value.score)) : 0,
     ...(typeof value.sourceUsername === 'string' && value.sourceUsername !== '' ? { sourceUsername: value.sourceUsername } : {}),
+    ...(Array.isArray(value.discoveredVia)
+      ? {
+          discoveredVia: value.discoveredVia
+            .filter((item): item is string => typeof item === 'string' && item !== '')
+            .slice(0, 8)
+            .map(item => item.slice(0, 80)),
+        }
+      : {}),
     ...(typeof value.sourceCount === 'number' && isFinite(value.sourceCount)
       ? { sourceCount: Math.max(1, Math.round(value.sourceCount)) }
       : {}),

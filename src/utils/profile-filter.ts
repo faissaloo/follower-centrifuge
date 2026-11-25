@@ -40,6 +40,7 @@ function profileStateRow(candidate: ShortlistCandidate, index: number): Record<s
     username: candidate.username,
     display_name: candidate.fullName.slice(0, 120),
     biography: candidate.biography.slice(0, 220),
+    discovered_via: (candidate.discoveredVia ?? []).slice(0, 8),
     follower_count: candidate.followerCount,
     following_count: candidate.followingCount,
     verified: candidate.isVerified,

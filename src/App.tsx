@@ -37,6 +37,13 @@ import {
 } from './utils/daily-shortlist';
 import { validateFilterPrompt } from './utils/filter-prompt';
 import { createCachedProfileFetcher } from './utils/growth-profile-cache';
+import {
+  isSeedListFresh,
+  loadGrowthGraphCache,
+  preferredCachedSeeds,
+  putSeedGraph,
+  saveGrowthGraphCache,
+} from './utils/growth-graph-cache';
 import { estimateExecutionRemainingMs, executeUnfollowPlan } from './utils/unfollow-executor';
 import { loadDeepSeekConfig, saveDeepSeekConfig } from './utils/deepseek-settings';
 import {
@@ -357,16 +364,51 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
     }
     try {
       const cachedProfileFetch = createCachedProfileFetcher(fetchUserProfileInfo);
+      // Seed follower/following lists are cached for 30 days. The same seeds
+      // are reused across refreshes, so a normal day makes zero graph requests
+      // for them.
+      let graphCache = loadGrowthGraphCache();
+      const cacheNow = Date.now();
+      const seedIdOf = (seed: FetchListUser): string =>
+        String(seed.pk_id ?? seed.pk ?? seed.id ?? seed.username ?? '');
+      const fetchSeedFollowing = async (seed: FetchListUser): Promise<readonly FetchListUser[]> => {
+        const id = seedIdOf(seed);
+        const entry = graphCache.entries[id];
+        if (isSeedListFresh(entry, 'following', Date.now())) {
+          return entry.following;
+        }
+        const users = (await fetchFriendshipsPage('following', undefined, 24, id)).users ?? [];
+        graphCache = putSeedGraph(graphCache, seed, { following: users }, Date.now());
+        saveGrowthGraphCache(graphCache);
+        return users;
+      };
+      const fetchSeedFollowers = async (seed: FetchListUser): Promise<readonly FetchListUser[]> => {
+        const id = seedIdOf(seed);
+        const entry = graphCache.entries[id];
+        if (isSeedListFresh(entry, 'followers', Date.now())) {
+          return entry.followers;
+        }
+        const users = (await fetchFriendshipsPage('followers', undefined, 24, id)).users ?? [];
+        graphCache = putSeedGraph(graphCache, seed, { followers: users }, Date.now());
+        saveGrowthGraphCache(graphCache);
+        return users;
+      };
+      const preferredSeeds = preferredCachedSeeds(graphCache, cacheNow);
       const candidates = await discoverGrowthCandidates({
         fetchViewerFollowing: async () => (await fetchFriendshipsPage('following', undefined, 50)).users ?? [],
-        fetchSeedFollowing: async seedId =>
-          (await fetchFriendshipsPage('following', undefined, 24, seedId)).users ?? [],
+        fetchSeedFollowing,
+        fetchSeedFollowers,
         fetchProfile: cachedProfileFetch,
         sleep: ms => sleep(ms),
         random: () => Math.random(),
         now: () => Date.now(),
         knownFollowing,
         seen: shortlistState?.seen,
+        preferredSeeds,
+        isSeedCached: id => {
+          const entry = graphCache.entries[id];
+          return isSeedListFresh(entry, 'following', Date.now()) && isSeedListFresh(entry, 'followers', Date.now());
+        },
         onProgress: (_stage, message) => setShortlistProgress(message),
       });
       const entries = await filterShortlistCandidates(

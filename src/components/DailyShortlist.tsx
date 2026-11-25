@@ -204,8 +204,17 @@ export const DailyShortlist = ({
                     {t(lang, STRENGTH_LABEL_KEYS[strength])}
                   </span>
                   <span className='wa-daily__score'>{t(lang, 'dailyScore', Math.round(entry.score * 100))}</span>
-                  {entry.sourceUsername !== undefined && (
-                    <span className='wa-daily__source'>{t(lang, 'dailySource', entry.sourceUsername)}</span>
+                  {entry.discoveredVia !== undefined && entry.discoveredVia.length > 0 ? (
+                    <>
+                      <span className='wa-daily__source'>{t(lang, 'dailyVia', entry.discoveredVia[0])}</span>
+                      {entry.discoveredVia.length > 1 && (
+                        <span className='wa-daily__distance'>{t(lang, 'dailyViaMore', entry.discoveredVia.length - 1)}</span>
+                      )}
+                    </>
+                  ) : (
+                    entry.sourceUsername !== undefined && (
+                      <span className='wa-daily__source'>{t(lang, 'dailySource', entry.sourceUsername)}</span>
+                    )
                   )}
                   {(entry.sourceCount ?? 1) === 1 ? (
                     <span className='wa-daily__distance wa-daily__distance--far'>{t(lang, 'dailyFar')}</span>

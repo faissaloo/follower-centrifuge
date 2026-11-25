@@ -126,19 +126,22 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
     deps.onProgress?.('seeds', `checking @${seedUsername} (${seedIndex}/${sampledSeeds.length})`);
     let following: readonly FetchListUser[] = [];
     let followers: readonly FetchListUser[] = [];
+    let followingError = false;
+    let followersError = false;
     try {
       following = await deps.fetchSeedFollowing(seed);
     } catch {
-      // One list may still be available.
+      followingError = true;
     }
     try {
       followers = await deps.fetchSeedFollowers(seed);
     } catch {
-      // Keep whichever list worked.
+      followersError = true;
     }
     deps.onProgress?.(
       'seeds',
-      `@${seedUsername}: ${following.length} following / ${followers.length} followers`,
+      `@${seedUsername}: ${following.length} following${followingError ? ' (failed)' : ''} / ` +
+        `${followers.length} followers${followersError ? ' (failed)' : ''}`,
     );
     if (following.length === 0 && followers.length === 0) {
       continue;

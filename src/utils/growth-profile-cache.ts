@@ -11,7 +11,7 @@ export const GROWTH_PROFILE_CACHE_VERSION = 1;
 export const GROWTH_PROFILE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const GROWTH_PROFILE_UNAVAILABLE_TTL_MS = 24 * 60 * 60 * 1000;
 export const GROWTH_PROFILE_RATE_LIMIT_KEY = 'iu_growth-profile-rate-limited-until';
-export const GROWTH_PROFILE_RATE_LIMIT_COOLDOWN_MS = 30 * 60 * 1000;
+export const GROWTH_PROFILE_RATE_LIMIT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 250;
 
 interface CachedProfileEntry {
@@ -172,8 +172,11 @@ export function createCachedProfileFetcher(
   return async (lookup: ProfileLookup | string): Promise<ProfileInfo> => {
     const blockedUntil = readRateLimitUntil(storage);
     if (now() < blockedUntil) {
-      const minutes = Math.max(1, Math.ceil((blockedUntil - now()) / 60000));
-      throw new Error(`instagram is rate-limiting profile reads; paused for ~${minutes} more minutes`);
+      const remainingMinutes = Math.max(1, Math.ceil((blockedUntil - now()) / 60000));
+      const window = remainingMinutes >= 60
+        ? `~${Math.ceil(remainingMinutes / 60)} more hours`
+        : `~${remainingMinutes} more minutes`;
+      throw new Error(`instagram is rate-limiting profile reads; paused for ${window}`);
     }
     const requested = typeof lookup === 'string' ? { username: lookup } : lookup;
     const username = requested.username;

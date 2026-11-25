@@ -53,7 +53,7 @@ describe('growth profile cache', () => {
     await expect(cached('first.account')).rejects.toThrow(/429|too many/i);
     await expect(cached('second.account')).rejects.toThrow(/rate-limiting/i);
     expect(fetchProfile).toHaveBeenCalledTimes(1);
-    now += 31 * 60 * 1000;
+    now += 25 * 60 * 60 * 1000;
     await expect(cached('second.account')).rejects.toThrow(/429|too many/i);
     expect(fetchProfile).toHaveBeenCalledTimes(2);
   });

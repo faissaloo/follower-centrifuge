@@ -3,8 +3,10 @@ import {
   DailyShortlistState,
   DEFAULT_FILTER_PROMPT,
   SHORTLIST_HISTORY_DAYS,
+  MAX_MANUAL_SEEDS,
   SHORTLIST_PROMPT_STORAGE_KEY,
   SHORTLIST_REFRESH_MS,
+  SHORTLIST_SEEDS_STORAGE_KEY,
   SHORTLIST_STATE_VERSION,
   SHORTLIST_STORAGE_KEY,
   ShortlistCandidate,
@@ -195,4 +197,49 @@ export function withSeenHistory(
     pruned[entry.username.toLowerCase()] = now;
   }
   return pruned;
+}
+
+/** Normalize user-entered seed usernames (commas/whitespace/@ allowed). */
+export function parseSeedAccounts(raw: string): string[] {
+  const seeds: string[] = [];
+  for (const token of raw.split(/[\s,]+/)) {
+    const username = token.trim().replace(/^@/, '').toLowerCase();
+    if (username !== '' && /^[a-z0-9._]{1,30}$/.test(username) && seeds.indexOf(username) === -1) {
+      seeds.push(username);
+    }
+    if (seeds.length >= MAX_MANUAL_SEEDS) {
+      break;
+    }
+  }
+  return seeds;
+}
+
+export function loadSeedAccounts(storage: Storage | null = storageOrNull()): string[] {
+  if (storage === null) {
+return [];
+}
+  try {
+    const raw = storage.getItem(SHORTLIST_SEEDS_STORAGE_KEY);
+    if (raw === null) {
+return [];
+}
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+return [];
+}
+    return parseSeedAccounts(parsed.filter((item): item is string => typeof item === 'string').join(' '));
+  } catch {
+    return [];
+  }
+}
+
+export function saveSeedAccounts(seeds: readonly string[], storage: Storage | null = storageOrNull()): void {
+  if (storage === null) {
+return;
+}
+  try {
+    storage.setItem(SHORTLIST_SEEDS_STORAGE_KEY, JSON.stringify(seeds.slice(0, MAX_MANUAL_SEEDS)));
+  } catch {
+    // Ignore storage failures.
+  }
 }

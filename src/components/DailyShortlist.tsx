@@ -25,7 +25,10 @@ export interface DailyShortlistProps {
   readonly error?: string;
   readonly promptError?: string;
   readonly disabledReason?: string;
+  readonly seeds?: readonly string[];
+  readonly seedsError?: string;
   readonly onSavePrompt: (prompt: string) => void;
+  readonly onSaveSeeds?: (raw: string) => void;
   readonly onRefresh: () => void;
   /** Explicit, per-row follow action; never automatic. */
   readonly onFollow?: (candidate: ShortlistCandidate) => Promise<ShortlistFollowResult>;
@@ -68,8 +71,11 @@ export const DailyShortlist = ({
   progress,
   error,
   promptError,
+  seeds = [],
+  seedsError,
   disabledReason,
   onSavePrompt,
+  onSaveSeeds,
   onRefresh,
   onFollow,
 }: DailyShortlistProps) => {
@@ -77,6 +83,10 @@ export const DailyShortlist = ({
   useEffect(() => {
     setDraft(prompt);
   }, [prompt]);
+  const [seedsDraft, setSeedsDraft] = useState(seeds.join(', '));
+  useEffect(() => {
+    setSeedsDraft(seeds.join(', '));
+  }, [seeds]);
   const [followPending, setFollowPending] = useState<string | null>(null);
   const [followError, setFollowError] = useState<string | undefined>(undefined);
   const [now, setNow] = useState(() => Date.now());
@@ -133,7 +143,25 @@ export const DailyShortlist = ({
           />
         </label>
         {promptError !== undefined && <p className='wa-field__error'>{promptError}</p>}
+        {onSaveSeeds !== undefined && (
+          <label className='wa-field'>
+            <span className='wa-field__label'>{t(lang, 'dailySeedsLabel')}</span>
+            <textarea
+              className='wa-input wa-daily__prompt'
+              rows={2}
+              value={seedsDraft}
+              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setSeedsDraft(event.currentTarget.value)}
+              placeholder={t(lang, 'dailySeedsPlaceholder')}
+            />
+          </label>
+        )}
+        {seedsError !== undefined && <p className='wa-field__error'>{seedsError}</p>}
         <div className='wa-daily__actions'>
+          {onSaveSeeds !== undefined && (
+            <button type='button' className='wa-btn wa-btn--small' onClick={() => onSaveSeeds(seedsDraft)}>
+              {t(lang, 'dailySaveSeeds')}
+            </button>
+          )}
           <button type='button' className='wa-btn wa-btn--small' onClick={() => onSavePrompt(draft)}>
             {t(lang, 'dailySaveFilter')}
           </button>

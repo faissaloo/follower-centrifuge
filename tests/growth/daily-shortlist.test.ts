@@ -8,6 +8,9 @@ import {
   saveFilterPrompt,
   saveShortlistState,
   withSeenHistory,
+  loadSeedAccounts,
+  parseSeedAccounts,
+  saveSeedAccounts,
 } from '../../src/utils/daily-shortlist';
 
 const state: DailyShortlistState = {
@@ -53,6 +56,13 @@ describe('daily shortlist persistence', () => {
     expect(nextDueAt(1_000_000)).toBe(state.dueAt);
     expect(isShortlistDue(loaded, state.refreshedAt + 1000)).toBe(false);
     expect(isShortlistDue(loaded, state.dueAt)).toBe(true);
+  });
+
+  it('stores optional manual seed accounts across restarts', () => {
+    const seeds = parseSeedAccounts('@Studio.One, clay.studio\nstudio.one invalid!');
+    expect(seeds).toEqual(['studio.one', 'clay.studio']);
+    saveSeedAccounts(seeds);
+    expect(loadSeedAccounts()).toEqual(seeds);
   });
 
   it('tracks a 30-day seen history without duplicates', () => {

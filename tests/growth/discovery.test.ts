@@ -24,6 +24,31 @@ describe('growth discovery', () => {
     expect(result.map(candidate => candidate.username)).toContain('private_candidate');
   });
 
+  it('uses a manually supplied seed even when it is outside your following page', async () => {
+    const manualSeed: FetchListUser = { pk_id: 'manual', username: 'manual_seed' };
+    const result = await discoverGrowthCandidates({
+      fetchViewerFollowing: async () => [user('seed1', 'seed_one')],
+      fetchSeedFollowing: async seed => [user(`c-${seed.username}`, `via_${seed.username}`)],
+      fetchSeedFollowers: async () => [],
+      fetchProfile: async username => ({
+        id: username,
+        username,
+        fullName: username,
+        biography: '',
+        profilePicUrl: '',
+        isPrivate: false,
+        isVerified: false,
+        followerCount: 1,
+        followingCount: 1,
+      }),
+      preferredSeeds: [manualSeed],
+      sleep: async () => undefined,
+      random: () => 0.5,
+      now: () => 1_000_000,
+    });
+    expect(result.some(candidate => candidate.username === 'via_manual_seed')).toBe(true);
+  });
+
   it('records how each account was discovered and uses both seed lists', async () => {
     const result = await discoverGrowthCandidates({
       fetchViewerFollowing: async () => [user('seed1', 'seed_one')],

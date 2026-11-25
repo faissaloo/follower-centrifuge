@@ -75,6 +75,28 @@ describe('DailyShortlist', () => {
     expect(onFollow).toHaveBeenCalledTimes(1);
   });
 
+  it('saves optional seed accounts while a refresh is running', () => {
+    const onSaveSeeds = vi.fn();
+    render(
+      <DailyShortlist
+        lang='en'
+        prompt='ceramics'
+        state={state}
+        busy
+        seeds={['previous.seed']}
+        onSavePrompt={vi.fn()}
+        onSaveSeeds={onSaveSeeds}
+        onRefresh={vi.fn()}
+      />,
+    );
+    const input = screen.getByLabelText(t('en', 'dailySeedsLabel'));
+    fireEvent.input(input, { target: { value: 'new.seed' } });
+    const save = screen.getByRole('button', { name: t('en', 'dailySaveSeeds') });
+    expect(save.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(save);
+    expect(onSaveSeeds).toHaveBeenCalledWith('new.seed');
+  });
+
   it('keeps save available while a refresh is running', () => {
     const onSavePrompt = vi.fn();
     render(

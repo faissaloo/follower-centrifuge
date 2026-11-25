@@ -29,9 +29,12 @@ import { filterShortlistCandidates } from './utils/profile-filter';
 import {
   isShortlistDue,
   loadFilterPrompt,
+  loadSeedAccounts,
   loadShortlistState,
   nextDueAt,
+  parseSeedAccounts,
   saveFilterPrompt,
+  saveSeedAccounts,
   saveShortlistState,
   withSeenHistory,
 } from './utils/daily-shortlist';
@@ -309,6 +312,8 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
 
   // Read-only Daily 20 shortlist state. This never follows/unfollows anyone.
   const [shortlistPrompt, setShortlistPrompt] = useState(() => loadFilterPrompt());
+  const [shortlistSeeds, setShortlistSeeds] = useState<string[]>(() => loadSeedAccounts());
+  const [shortlistSeedsError, setShortlistSeedsError] = useState<string | undefined>(undefined);
   const [shortlistState, setShortlistState] = useState<DailyShortlistState | null>(() => loadShortlistState());
   const [shortlistBusy, setShortlistBusy] = useState(false);
   const [shortlistProgress, setShortlistProgress] = useState<string | undefined>(undefined);
@@ -393,7 +398,23 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
         saveGrowthGraphCache(graphCache);
         return users;
       };
-      const preferredSeeds = preferredCachedSeeds(graphCache, cacheNow);
+      const manualSeedUsers: FetchListUser[] = [];
+      for (const username of shortlistSeeds) {
+        try {
+          const profile = await cachedProfileFetch(username);
+          manualSeedUsers.push({
+            pk_id: profile.id,
+            username: profile.username,
+            full_name: profile.fullName,
+            profile_pic_url: profile.profilePicUrl,
+            is_private: profile.isPrivate,
+            is_verified: profile.isVerified,
+          });
+        } catch {
+          // A bad/deleted seed shouldn't block the rest of the shortlist.
+        }
+      }
+      const preferredSeeds = [...manualSeedUsers, ...preferredCachedSeeds(graphCache, cacheNow)];
       const candidates = await discoverGrowthCandidates({
         fetchViewerFollowing: async () => (await fetchFriendshipsPage('following', undefined, 50)).users ?? [],
         fetchSeedFollowing,
@@ -439,6 +460,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
     deepSeekConfig,
     shortlistDisabledReason,
     shortlistPrompt,
+    shortlistSeeds,
     shortlistState,
   ]);
   const handleSaveShortlistPrompt = useCallback((prompt: string): void => {
@@ -450,6 +472,17 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
     setShortlistPrompt(validation.prompt);
     saveFilterPrompt(validation.prompt);
     setShortlistPromptError(undefined);
+    setShortlistError(undefined);
+  }, []);
+  const handleSaveShortlistSeeds = useCallback((raw: string): void => {
+    const seeds = parseSeedAccounts(raw);
+    if (raw.trim() !== '' && seeds.length === 0) {
+      setShortlistSeedsError('use plain instagram usernames, separated by commas or spaces.');
+      return;
+    }
+    setShortlistSeeds(seeds);
+    saveSeedAccounts(seeds);
+    setShortlistSeedsError(undefined);
     setShortlistError(undefined);
   }, []);
   const handleFollowShortlistCandidate = useCallback(
@@ -1295,8 +1328,11 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           progress={shortlistProgress}
           error={shortlistError}
           promptError={shortlistPromptError}
+          seeds={shortlistSeeds}
+          seedsError={shortlistSeedsError}
           disabledReason={shortlistDisabledReason}
           onSavePrompt={handleSaveShortlistPrompt}
+          onSaveSeeds={handleSaveShortlistSeeds}
           onRefresh={() => {
             void runShortlistRefresh(true);
           }}

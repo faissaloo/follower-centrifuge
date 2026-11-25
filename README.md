@@ -41,7 +41,8 @@ The review is where the tool earns its keep: target tabs (including the **follow
 The launch screen also has a **Daily 20** panel: up to 20 public accounts linked to the people you already follow, refreshed automatically at most once every **24 hours** while the page stays open. The shortlist has an explicit **follow button** per row (private accounts say **request follow**); it never follows automatically or runs follow/unfollow cycles.
 
 - **Discovery:** samples up to 6 accounts you follow, reads one page of their **following and followers** lists (up to 24 each), de-duplicates against accounts you follow and the last 30 days, then reads at most 50 public profiles. If a profile read fails, the following-list row is kept so one bad endpoint doesn't empty the whole shortlist. Requests use randomised 0.9–3.6 s gaps and hard daily caps.
-- **Graph cache:** the sampled seeds and their following/follower lists are cached for **30 days**. Subsequent daily refreshes reuse the same seeds and make no graph requests while the cache is fresh; it is pruned/refetched after 30 days.
+- **Manual seed accounts:** the Daily 20 page accepts optional `@usernames` (up to 10, saved in `localStorage`). They're resolved through the public profile cache and used before network seeds, so a thin/young account can still start discovery from chosen accounts.
+- **Graph cache:** the sampled seeds (including manual seeds) and their following/follower lists are cached for **30 days**. Subsequent daily refreshes reuse the same seeds and make no graph requests while the cache is fresh; it is pruned/refetched after 30 days.
 - **What Jev sees:** username, display name, **bio**, follower/following counts, **discovered_via** (which of your follows led here, and whether via their following or followers), and optional profile-photo cues. The exact prompt is in [src/prompts/daily-shortlist.ts](src/prompts/daily-shortlist.ts).
 - **Profile cache:** successful public profile reads are cached for 7 days; profiles confirmed unavailable (403/404/410) are skipped for 24 hours. Private accounts are included — their raw following-list data is used when the public profile read is unavailable.
 - **Filter prompt:** stored in `localStorage` so it survives a script restart. It's for interests, content style and account quality only — sensitive-trait filtering (religion, ethnicity, gender, sexuality, health, nationality, age) is rejected by a guard. Jev makes the match decision. The exact Jev prompt lives in [src/prompts/daily-shortlist.ts](src/prompts/daily-shortlist.ts).
@@ -148,7 +149,7 @@ Open `http://localhost:8080/?preview=review`, press **COPY**, and paste the scri
 ## 🧪 Verification & tests
 
 ```bash
-npm test                 # 883 tests / 59 files (unit, component, integration, safety)
+npm test                 # 886 tests / 59 files (unit, component, integration, safety)
 npm run test:coverage    # coverage thresholds
 npm run verify           # typecheck app + tests, lint, tests
 npm run check:classifier # MANUAL real-API check (synthetic names only; uses .typesafe-key/.deepseek-key)
@@ -182,7 +183,8 @@ src/
     audit-preferences.ts # persisted category preference
     growth-discovery.ts  # bounded 2-hop candidate discovery
     profile-filter.ts    # Jev/DeepSeek filter scoring
-    daily-shortlist.ts   # prompt/state localStorage + 24h due logic
+    daily-shortlist.ts   # prompt/seed/state localStorage + 24h due logic
+    growth-graph-cache.ts # 30-day follower/following cache per seed
     prompts/daily-shortlist.ts # exact Jev prompt for the shortlist filter
     i18n.ts              # EN/ES
   components/

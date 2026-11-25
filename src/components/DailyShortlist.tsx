@@ -28,6 +28,7 @@ export interface DailyShortlistProps {
   readonly promptError?: string;
   readonly disabledReason?: string;
   readonly seeds?: readonly string[];
+  readonly seedWarning?: string;
   readonly onSavePrompt: (prompt: string) => void;
   readonly onSaveSeeds?: (seeds: readonly string[]) => void;
   readonly onRefresh: () => void;
@@ -75,6 +76,7 @@ export const DailyShortlist = ({
   error,
   promptError,
   seeds = EMPTY_SEEDS,
+  seedWarning,
   disabledReason,
   onSavePrompt,
   onSaveSeeds,
@@ -251,6 +253,9 @@ export const DailyShortlist = ({
 
       {followError !== undefined && (
         <p className='wa-banner wa-banner--warning' role='alert'>{followError}</p>
+      )}
+      {seedWarning !== undefined && (
+        <p className='wa-banner wa-banner--warning' role='alert'>{seedWarning}</p>
       )}
 
       {state !== null && state.entries.length > 0 ? (

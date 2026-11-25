@@ -569,6 +569,117 @@ export interface ProfileInfo {
   readonly followingCount: number;
 }
 
+function profileFromUser(user: Record<string, unknown>, fallbackUsername: string): ProfileInfo {
+  const count = (value: unknown): number =>
+    typeof value === 'number' && isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  const edgeFollowedBy = user.edge_followed_by as { count?: unknown } | undefined;
+  const edgeFollow = user.edge_follow as { count?: unknown } | undefined;
+  return {
+    id: String(user.id ?? user.pk ?? fallbackUsername),
+    username: typeof user.username === 'string' ? user.username : fallbackUsername,
+    fullName: typeof user.full_name === 'string' ? user.full_name : '',
+    biography: typeof user.biography === 'string' ? user.biography : '',
+    profilePicUrl: typeof user.profile_pic_url === 'string' ? user.profile_pic_url : '',
+    isPrivate: user.is_private === true,
+    isVerified: user.is_verified === true,
+    followerCount: count(user.follower_count) || count(edgeFollowedBy?.count),
+    followingCount: count(user.following_count) || count(edgeFollow?.count),
+  };
+}
+
+function profileHeaders(csrftoken: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-IG-App-ID': INSTAGRAM_WEB_APP_ID,
+    'X-ASBD-ID': INSTAGRAM_ASBD_ID,
+    'X-Requested-With': 'XMLHttpRequest',
+    'Accept': '*/*',
+  };
+  if (csrftoken !== '') {
+    headers['X-CSRFToken'] = csrftoken;
+  }
+  return headers;
+}
+
+/** Profile lookup by numeric id: the username web_profile_info endpoint now frequently 404s. */
+export async function fetchUserProfileInfoById(userId: string): Promise<ProfileInfo> {
+  if (!/^\d+$/.test(userId)) {
+    throw new InstagramApiError(400, 'profile lookup needs a numeric user id');
+  }
+  const url = `https://www.instagram.com/api/v1/users/${encodeURIComponent(userId)}/info/`;
+  const response = await fetchWithTimeout(url, {
+    credentials: 'same-origin',
+    headers: profileHeaders(getCookie('csrftoken') || ''),
+  });
+  if (!response.ok) {
+    throw new InstagramApiError(response.status, `Instagram returned HTTP ${response.status} for a profile lookup`);
+  }
+  const payload = (await response.json()) as { user?: Record<string, unknown> };
+  if (payload.user === undefined) {
+    throw new InstagramApiError(response.status, 'Instagram returned no profile data');
+  }
+  return profileFromUser(payload.user, userId);
+}
+
+/** Best-effort username -> user resolution for manually pasted seeds. */
+export async function resolveUserByUsername(username: string): Promise<ProfileInfo> {
+  try {
+    return await fetchUserProfileInfo(username);
+  } catch {
+    // web_profile_info is unreliable for logged-in callers.
+  }
+  try {
+    const url = `https://www.instagram.com/api/v1/web/search/topsearch/?context=blended&query=${encodeURIComponent(username)}`;
+    const response = await fetchWithTimeout(url, {
+      credentials: 'same-origin',
+      headers: profileHeaders(getCookie('csrftoken') || ''),
+    });
+    if (response.ok) {
+      const payload = (await response.json()) as { users?: Array<{ user?: Record<string, unknown> }> };
+      const match = (payload.users ?? [])
+        .map(item => item.user)
+        .find(user => user !== undefined && typeof user.username === 'string' && user.username.toLowerCase() === username.toLowerCase());
+      if (match !== undefined) {
+        return profileFromUser(match, username);
+      }
+    }
+  } catch {
+    // Fall through to the profile page.
+  }
+  // Last resort: the profile HTML includes the numeric id even when the JSON
+  // endpoints 404. Seed discovery needs only that id.
+  const page = await fetchWithTimeout(`https://www.instagram.com/${encodeURIComponent(username)}/`, {
+    credentials: 'same-origin',
+    headers: { ...profileHeaders(getCookie('csrftoken') || ''), Accept: 'text/html' },
+  });
+  if (!page.ok) {
+    throw new InstagramApiError(page.status, `Instagram returned HTTP ${page.status} for @${username}`);
+  }
+  const html = await page.text();
+  const patterns = [
+    /"profile_id"\s*:\s*"(\d+)"/,
+    /"user_id"\s*:\s*"(\d+)"/,
+    /"props"\s*:\s*\{[^}]*"user_id"\s*:\s*"(\d+)"/,
+    /profilePage_(\d+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(html);
+    if (match !== null) {
+      return {
+        id: match[1],
+        username,
+        fullName: '',
+        biography: '',
+        profilePicUrl: '',
+        isPrivate: false,
+        isVerified: false,
+        followerCount: 0,
+        followingCount: 0,
+      };
+    }
+  }
+  throw new InstagramApiError(404, `could not resolve @${username} to an instagram id`);
+}
+
 /**
  * Read one public profile. Used only by the read-only Daily 20 shortlist;
  * the caller is responsible for pacing these lookups.

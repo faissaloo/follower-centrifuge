@@ -7,7 +7,7 @@
  * verification logic are covered instead of only mocked away.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchFriendshipsPage, followUser, getCookie, isStillFollowing, removeFollower, unfollowUser } from '../../src/utils/utils';
+import { fetchFriendshipsPage, fetchUserProfileInfoById, followUser, getCookie, isStillFollowing, removeFollower, resolveUserByUsername, unfollowUser } from '../../src/utils/utils';
 import { INSTAGRAM_UNFOLLOW_DOC_ID, INSTAGRAM_UNFOLLOW_FRIENDLY_NAME } from '../../src/constants/constants';
 
 interface FakeResponseInit {
@@ -267,6 +267,43 @@ describe('external friendship lists', () => {
     expect(url).toContain('/api/v1/friendships/seed-account-id/followers/');
     expect(url).toContain('rank_token=');
     expect(url).toContain('search_surface=follow_list_page');
+  });
+});
+
+describe('profile lookup fallbacks', () => {
+  it('fetches profile data by numeric id instead of username', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({
+      json: {
+        user: {
+          pk: '12345',
+          username: 'seed_account',
+          full_name: 'Seed Account',
+          biography: 'seed bio',
+          profile_pic_url: 'https://cdn.example/seed.jpg',
+          is_private: true,
+          is_verified: true,
+          follower_count: 42,
+          following_count: 7,
+        },
+      },
+    }));
+    const profile = await fetchUserProfileInfoById('12345');
+    expect(profile).toMatchObject({ id: '12345', username: 'seed_account', biography: 'seed bio', followerCount: 42 });
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/v1/users/12345/info/');
+  });
+
+  it('resolves a manual seed from profile HTML when both JSON endpoints fail', async () => {
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/v1/users/web_profile_info/') || url.includes('/web/search/topsearch/')) {
+        return new Response('', { status: 404 });
+      }
+      return new Response('{"profile_id":"98765"}', { status: 200, headers: { 'content-type': 'text/html' } });
+    });
+    const profile = await resolveUserByUsername('clay.studio');
+    expect(profile.id).toBe('98765');
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe('https://www.instagram.com/clay.studio/');
   });
 });
 

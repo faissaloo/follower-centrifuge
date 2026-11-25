@@ -22,7 +22,7 @@ export interface GrowthDiscoveryDeps {
   readonly fetchViewerFollowing: () => Promise<readonly FetchListUser[]>;
   readonly fetchSeedFollowing: (seed: FetchListUser) => Promise<readonly FetchListUser[]>;
   readonly fetchSeedFollowers: (seed: FetchListUser) => Promise<readonly FetchListUser[]>;
-  readonly fetchProfile: (username: string) => Promise<ProfileInfo>;
+  readonly fetchProfile: (candidate: { readonly id: string; readonly username: string }) => Promise<ProfileInfo>;
   readonly sleep: (milliseconds: number) => Promise<void>;
   readonly random: () => number;
   readonly now: () => number;
@@ -207,7 +207,7 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
     profileIndex += 1;
     deps.onProgress?.('profiles', `reading @${candidate.username} (${profileIndex}/${sampled.length})`);
     try {
-      const profile = await deps.fetchProfile(candidate.username);
+      const profile = await deps.fetchProfile({ id: candidate.id, username: candidate.username });
       enriched.push({
         ...candidate,
         id: profile.id !== '' ? profile.id : candidate.id,

@@ -30,10 +30,10 @@ describe('growth discovery', () => {
       fetchViewerFollowing: async () => [user('seed1', 'seed_one')],
       fetchSeedFollowing: async seed => [user(`c-${seed.username}`, `via_${seed.username}`)],
       fetchSeedFollowers: async () => [],
-      fetchProfile: async username => ({
-        id: username,
-        username,
-        fullName: username,
+      fetchProfile: async candidate => ({
+        id: candidate.id,
+        username: candidate.username,
+        fullName: candidate.username,
         biography: '',
         profilePicUrl: '',
         isPrivate: false,
@@ -54,11 +54,11 @@ describe('growth discovery', () => {
       fetchViewerFollowing: async () => [user('seed1', 'seed_one')],
       fetchSeedFollowing: async () => [user('f1', 'via_following')],
       fetchSeedFollowers: async () => [user('r1', 'via_followers')],
-      fetchProfile: async username => ({
-        id: username,
-        username,
-        fullName: username,
-        biography: `${username} bio`,
+      fetchProfile: async candidate => ({
+        id: candidate.id,
+        username: candidate.username,
+        fullName: candidate.username,
+        biography: `${candidate.username} bio`,
         profilePicUrl: '',
         isPrivate: false,
         isVerified: false,
@@ -96,7 +96,7 @@ describe('growth discovery', () => {
           ? [user('c1', 'candidate_one'), user('c2', 'candidate_two'), user('known', 'already_followed')]
           : [user('c2', 'candidate_two'), user('c3', 'candidate_three'), user('seen', 'seen_before')],
       fetchSeedFollowers: async () => [],
-      fetchProfile: async username => profile(username),
+      fetchProfile: async candidate => profile(candidate.username),
       sleep,
       random: () => 0.5,
       now: () => 1_000_000,

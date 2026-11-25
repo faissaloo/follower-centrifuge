@@ -118,14 +118,21 @@ function isPermanentlyUnavailable(error: unknown): boolean {
  * Wrap a profile fetcher with the cache. Cached successful profiles are reused
  * for 7 days; known-unavailable profiles are skipped for 24 hours.
  */
+export interface ProfileLookup {
+  readonly id?: string;
+  readonly username: string;
+}
+
 export function createCachedProfileFetcher(
-  fetchProfile: (username: string) => Promise<ProfileInfo>,
+  fetchProfile: (lookup: ProfileLookup) => Promise<ProfileInfo>,
   options: { readonly storage?: Storage | null; readonly now?: () => number } = {},
-): (username: string) => Promise<ProfileInfo> {
+): (lookup: ProfileLookup | string) => Promise<ProfileInfo> {
   const storage = options.storage === undefined ? storageOrNull() : options.storage;
   const now = options.now ?? (() => Date.now());
   const cache = loadCache(storage);
-  return async (username: string): Promise<ProfileInfo> => {
+  return async (lookup: ProfileLookup | string): Promise<ProfileInfo> => {
+    const requested = typeof lookup === 'string' ? { username: lookup } : lookup;
+    const username = requested.username;
     const key = username.trim().toLowerCase();
     const entries = cache.entries as Record<string, CachedProfileEntry | undefined>;
     const hit = entries[key];
@@ -140,7 +147,7 @@ export function createCachedProfileFetcher(
       delete cache.entries[key];
     }
     try {
-      const profile = await fetchProfile(username);
+      const profile = await fetchProfile(requested);
       cache.entries[key] = { profile, checkedAt: now() };
       saveCache(cache, storage);
       return profile;

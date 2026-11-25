@@ -39,7 +39,7 @@ import {
   withSeenHistory,
 } from './utils/daily-shortlist';
 import { validateFilterPrompt } from './utils/filter-prompt';
-import { createCachedProfileFetcher } from './utils/growth-profile-cache';
+import { createCachedProfileFetcher, ProfileLookup } from './utils/growth-profile-cache';
 import {
   isSeedListFresh,
   loadGrowthGraphCache,
@@ -60,7 +60,7 @@ import { createFriendshipsListFetcher } from './utils/friendships-list';
 import { getInitialLanguage, Language, saveLanguage, t } from './utils/i18n';
 import { loadReviewCache, ReviewCacheRecord, saveReviewCache } from './utils/review-cache';
 import { loadTimings, loadWhitelist, saveTimings, saveWhitelist } from './utils/whitelist-manager';
-import { copyListToClipboard, exportToCSV, exportToJSON, fetchFriendshipsPage, fetchUserProfileInfo, followUser, getCookie, isStillFollower, isStillFollowing, removeFollower, sleep, unfollowUser } from './utils/utils';
+import { copyListToClipboard, exportToCSV, exportToJSON, fetchFriendshipsPage, fetchUserProfileInfoById, followUser, resolveUserByUsername, getCookie, isStillFollower, isStillFollowing, removeFollower, sleep, unfollowUser } from './utils/utils';
 import { buildWhitelistProtection, isProtectedByWhitelist, withoutProtectionFor } from './utils/whitelist-match';
 import { runAccountAudit } from './utils/account-audit';
 
@@ -313,6 +313,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   // Read-only Daily 20 shortlist state. This never follows/unfollows anyone.
   const [shortlistPrompt, setShortlistPrompt] = useState(() => loadFilterPrompt());
   const [shortlistSeeds, setShortlistSeeds] = useState<string[]>(() => loadSeedAccounts());
+  const [shortlistSeedWarning, setShortlistSeedWarning] = useState<string | undefined>(undefined);
   const [shortlistState, setShortlistState] = useState<DailyShortlistState | null>(() => loadShortlistState());
   const [shortlistBusy, setShortlistBusy] = useState(false);
   const [shortlistProgress, setShortlistProgress] = useState<string | undefined>(undefined);
@@ -367,7 +368,17 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
       }
     }
     try {
-      const cachedProfileFetch = createCachedProfileFetcher(fetchUserProfileInfo);
+      const baseProfileFetch = async (lookup: ProfileLookup): Promise<import('./utils/utils').ProfileInfo> => {
+        if (lookup.id !== undefined && /^\d+$/.test(lookup.id)) {
+          try {
+            return await fetchUserProfileInfoById(lookup.id);
+          } catch {
+            // Fall back to username resolution.
+          }
+        }
+        return resolveUserByUsername(lookup.username);
+      };
+      const cachedProfileFetch = createCachedProfileFetcher(baseProfileFetch);
       // Seed follower/following lists are cached for 30 days. The same seeds
       // are reused across refreshes, so a normal day makes zero graph requests
       // for them.
@@ -382,8 +393,10 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           return entry.following;
         }
         const users = (await fetchFriendshipsPage('following', undefined, 24, id)).users ?? [];
-        graphCache = putSeedGraph(graphCache, seed, { following: users }, Date.now());
-        saveGrowthGraphCache(graphCache);
+        if (users.length > 0) {
+          graphCache = putSeedGraph(graphCache, seed, { following: users }, Date.now());
+          saveGrowthGraphCache(graphCache);
+        }
         return users;
       };
       const fetchSeedFollowers = async (seed: FetchListUser): Promise<readonly FetchListUser[]> => {
@@ -403,9 +416,13 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
         return users;
       };
       const manualSeedUsers: FetchListUser[] = [];
+      const unresolvedSeeds: string[] = [];
+      if (shortlistSeeds.length > 0) {
+        setShortlistProgress(`resolving seed accounts (0/${shortlistSeeds.length})…`);
+      }
       for (const username of shortlistSeeds) {
         try {
-          const profile = await cachedProfileFetch(username);
+          const profile = await cachedProfileFetch({ username });
           manualSeedUsers.push({
             pk_id: profile.id,
             username: profile.username,
@@ -415,8 +432,16 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
             is_verified: profile.isVerified,
           });
         } catch {
-          // A bad/deleted seed shouldn't block the rest of the shortlist.
+          unresolvedSeeds.push(username);
         }
+        setShortlistProgress(`resolving seed accounts (${manualSeedUsers.length}/${shortlistSeeds.length})…`);
+      }
+      if (shortlistSeeds.length > 0 && manualSeedUsers.length === 0) {
+        setShortlistSeedWarning(t(lang, 'dailySeedsNoneResolved'));
+      } else if (unresolvedSeeds.length > 0) {
+        setShortlistSeedWarning(t(lang, 'dailySeedsUnresolved', unresolvedSeeds.join(', ')));
+      } else {
+        setShortlistSeedWarning(undefined);
       }
       const preferredSeeds = [...manualSeedUsers, ...preferredCachedSeeds(graphCache, cacheNow)];
       const candidates = await discoverGrowthCandidates({
@@ -462,6 +487,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
     }
   }, [
     deepSeekConfig,
+    lang,
     shortlistDisabledReason,
     shortlistPrompt,
     shortlistSeeds,
@@ -1328,6 +1354,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           error={shortlistError}
           promptError={shortlistPromptError}
           seeds={shortlistSeeds}
+          seedWarning={shortlistSeedWarning}
           disabledReason={shortlistDisabledReason}
           onSavePrompt={handleSaveShortlistPrompt}
           onSaveSeeds={handleSaveShortlistSeeds}

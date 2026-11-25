@@ -8,7 +8,7 @@ import { FetchListUser } from '../model/audit';
  * from this cache instead of hitting Instagram.
  */
 export const GROWTH_GRAPH_CACHE_KEY = 'iu_growth-graph-cache';
-export const GROWTH_GRAPH_CACHE_VERSION = 1;
+export const GROWTH_GRAPH_CACHE_VERSION = 2;
 export const GROWTH_GRAPH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_SEEDS = 24;
 const MAX_USERS_PER_LIST = 200;

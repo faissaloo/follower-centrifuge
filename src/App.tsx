@@ -393,8 +393,13 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           return entry.followers;
         }
         const users = (await fetchFriendshipsPage('followers', undefined, 24, id)).users ?? [];
-        graphCache = putSeedGraph(graphCache, seed, { followers: users }, Date.now());
-        saveGrowthGraphCache(graphCache);
+        // Don't cache an empty follower list: it usually means the external
+        // list endpoint failed or was restricted, and a 30-day empty cache
+        // would hide that forever.
+        if (users.length > 0) {
+          graphCache = putSeedGraph(graphCache, seed, { followers: users }, Date.now());
+          saveGrowthGraphCache(graphCache);
+        }
         return users;
       };
       const manualSeedUsers: FetchListUser[] = [];

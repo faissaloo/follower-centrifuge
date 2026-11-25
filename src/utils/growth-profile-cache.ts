@@ -10,6 +10,8 @@ export const GROWTH_PROFILE_CACHE_KEY = 'iu_growth-profile-cache';
 export const GROWTH_PROFILE_CACHE_VERSION = 1;
 export const GROWTH_PROFILE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const GROWTH_PROFILE_UNAVAILABLE_TTL_MS = 24 * 60 * 60 * 1000;
+export const GROWTH_PROFILE_RATE_LIMIT_KEY = 'iu_growth-profile-rate-limited-until';
+export const GROWTH_PROFILE_RATE_LIMIT_COOLDOWN_MS = 30 * 60 * 1000;
 const MAX_ENTRIES = 250;
 
 interface CachedProfileEntry {
@@ -106,6 +108,38 @@ function saveCache(cache: ProfileCacheFile, storage: Storage | null): void {
   }
 }
 
+function isRateLimited(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const status = (error as { status?: unknown }).status;
+  return status === 429 || (error instanceof Error && /\b429\b/.test(error.message));
+}
+
+function readRateLimitUntil(storage: Storage | null): number {
+  if (storage === null) {
+return 0;
+}
+  try {
+    const raw = storage.getItem(GROWTH_PROFILE_RATE_LIMIT_KEY);
+    const value = raw === null ? 0 : Number(raw);
+    return isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeRateLimitUntil(storage: Storage | null, until: number): void {
+  if (storage === null) {
+return;
+}
+  try {
+    storage.setItem(GROWTH_PROFILE_RATE_LIMIT_KEY, String(until));
+  } catch {
+    // Non-fatal.
+  }
+}
+
 function isPermanentlyUnavailable(error: unknown): boolean {
   if (typeof error !== 'object' || error === null || !('status' in error)) {
     return false;
@@ -125,12 +159,22 @@ export interface ProfileLookup {
 
 export function createCachedProfileFetcher(
   fetchProfile: (lookup: ProfileLookup) => Promise<ProfileInfo>,
-  options: { readonly storage?: Storage | null; readonly now?: () => number } = {},
+  options: {
+    readonly storage?: Storage | null;
+    readonly now?: () => number;
+    readonly cooldownMs?: number;
+  } = {},
 ): (lookup: ProfileLookup | string) => Promise<ProfileInfo> {
   const storage = options.storage === undefined ? storageOrNull() : options.storage;
   const now = options.now ?? (() => Date.now());
+  const cooldownMs = options.cooldownMs ?? GROWTH_PROFILE_RATE_LIMIT_COOLDOWN_MS;
   const cache = loadCache(storage);
   return async (lookup: ProfileLookup | string): Promise<ProfileInfo> => {
+    const blockedUntil = readRateLimitUntil(storage);
+    if (now() < blockedUntil) {
+      const minutes = Math.max(1, Math.ceil((blockedUntil - now()) / 60000));
+      throw new Error(`instagram is rate-limiting profile reads; paused for ~${minutes} more minutes`);
+    }
     const requested = typeof lookup === 'string' ? { username: lookup } : lookup;
     const username = requested.username;
     const key = username.trim().toLowerCase();
@@ -152,7 +196,9 @@ export function createCachedProfileFetcher(
       saveCache(cache, storage);
       return profile;
     } catch (error) {
-      if (isPermanentlyUnavailable(error)) {
+      if (isRateLimited(error)) {
+        writeRateLimitUntil(storage, now() + cooldownMs);
+      } else if (isPermanentlyUnavailable(error)) {
         cache.entries[key] = { profile: null, checkedAt: now() };
         saveCache(cache, storage);
       }

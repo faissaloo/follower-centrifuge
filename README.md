@@ -150,7 +150,7 @@ Open `http://localhost:8080/?preview=review`, press **COPY**, and paste the scri
 ## 🧪 Verification & tests
 
 ```bash
-npm test                 # 890 tests / 59 files (unit, component, integration, safety)
+npm test                 # 891 tests / 59 files (unit, component, integration, safety)
 npm run test:coverage    # coverage thresholds
 npm run verify           # typecheck app + tests, lint, tests
 npm run check:classifier # MANUAL real-API check (synthetic names only; uses .typesafe-key/.deepseek-key)

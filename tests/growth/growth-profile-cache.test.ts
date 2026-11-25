@@ -42,4 +42,19 @@ describe('growth profile cache', () => {
     await expect(cached('private.account')).rejects.toThrow();
     expect(fetchProfile).toHaveBeenCalledTimes(2);
   });
+
+  it('stops hammering profiles after a 429 and keeps a cooldown', async () => {
+    const limited = Object.assign(new Error('too many requests'), { status: 429 });
+    const fetchProfile = vi.fn(async () => {
+      throw limited;
+    });
+    let now = 1_000_000;
+    const cached = createCachedProfileFetcher(fetchProfile, { now: () => now });
+    await expect(cached('first.account')).rejects.toThrow(/429|too many/i);
+    await expect(cached('second.account')).rejects.toThrow(/rate-limiting/i);
+    expect(fetchProfile).toHaveBeenCalledTimes(1);
+    now += 31 * 60 * 1000;
+    await expect(cached('second.account')).rejects.toThrow(/429|too many/i);
+    expect(fetchProfile).toHaveBeenCalledTimes(2);
+  });
 });

@@ -605,23 +605,21 @@ export async function fetchUserProfileInfoById(userId: string): Promise<ProfileI
   if (!/^\d+$/.test(userId)) {
     throw new InstagramApiError(400, 'profile lookup needs a numeric user id');
   }
-  for (const host of ['www.instagram.com', 'i.instagram.com']) {
-    try {
-      const response = await fetchWithTimeout(`https://${host}/api/v1/users/${encodeURIComponent(userId)}/info/`, {
-        credentials: host === 'www.instagram.com' ? 'same-origin' : 'include',
-        headers: profileHeaders(getCookie('csrftoken') || ''),
-      });
-      if (response.ok) {
-        const payload = (await response.json()) as { user?: Record<string, unknown> };
-        if (payload.user !== undefined) {
-          return profileFromUser(payload.user, userId);
-        }
-      }
-    } catch {
-      // Try the next host.
-    }
+  const response = await fetchWithTimeout(
+    `https://www.instagram.com/api/v1/users/${encodeURIComponent(userId)}/info/`,
+    {
+      credentials: 'same-origin',
+      headers: profileHeaders(getCookie('csrftoken') || ''),
+    },
+  );
+  if (!response.ok) {
+    throw new InstagramApiError(response.status, `Instagram returned HTTP ${response.status} for a profile lookup`);
   }
-  throw new InstagramApiError(404, 'Instagram returned no profile data');
+  const payload = (await response.json()) as { user?: Record<string, unknown> };
+  if (payload.user === undefined) {
+    throw new InstagramApiError(response.status, 'Instagram returned no profile data');
+  }
+  return profileFromUser(payload.user, userId);
 }
 
 /** Best-effort username -> user resolution for manually pasted seeds. */

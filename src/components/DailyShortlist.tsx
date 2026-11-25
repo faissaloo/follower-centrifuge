@@ -3,12 +3,14 @@ import {
   DailyShortlistState,
   matchStrength,
   MAX_FILTER_PROMPT_LENGTH,
+  MAX_MANUAL_SEEDS,
   MatchStrength,
   SHORTLIST_REFRESH_MS,
   ShortlistCandidate,
 } from '../model/growth';
 import { Language, t } from '../utils/i18n';
 import { BrandWordmark } from './icons/BrandWordmark';
+import { parseSeedAccounts } from '../utils/daily-shortlist';
 
 export interface ShortlistFollowResult {
   readonly ok: boolean;
@@ -26,13 +28,14 @@ export interface DailyShortlistProps {
   readonly promptError?: string;
   readonly disabledReason?: string;
   readonly seeds?: readonly string[];
-  readonly seedsError?: string;
   readonly onSavePrompt: (prompt: string) => void;
-  readonly onSaveSeeds?: (raw: string) => void;
+  readonly onSaveSeeds?: (seeds: readonly string[]) => void;
   readonly onRefresh: () => void;
   /** Explicit, per-row follow action; never automatic. */
   readonly onFollow?: (candidate: ShortlistCandidate) => Promise<ShortlistFollowResult>;
 }
+
+const EMPTY_SEEDS: readonly string[] = [];
 
 const STRENGTH_LABEL_KEYS: Record<MatchStrength, 'dailyMatchStrong' | 'dailyMatchGood' | 'dailyMatchMaybe' | 'dailyMatchWeak'> = {
   strong: 'dailyMatchStrong',
@@ -71,8 +74,7 @@ export const DailyShortlist = ({
   progress,
   error,
   promptError,
-  seeds = [],
-  seedsError,
+  seeds = EMPTY_SEEDS,
   disabledReason,
   onSavePrompt,
   onSaveSeeds,
@@ -83,10 +85,34 @@ export const DailyShortlist = ({
   useEffect(() => {
     setDraft(prompt);
   }, [prompt]);
-  const [seedsDraft, setSeedsDraft] = useState(seeds.join(', '));
+  const [tags, setTags] = useState<string[]>([...seeds]);
+  const [seedDraft, setSeedDraft] = useState('');
+  const [seedError, setSeedError] = useState<string | undefined>(undefined);
   useEffect(() => {
-    setSeedsDraft(seeds.join(', '));
+    setTags([...seeds]);
   }, [seeds]);
+
+  const commitSeeds = (raw: string): void => {
+    if (raw.trim() === '') {
+      return;
+    }
+    const parsed = parseSeedAccounts(`${tags.join(' ')}, ${raw}`);
+    if (parsed.length === tags.length) {
+      setSeedError(t(lang, 'dailySeedInvalid'));
+      return;
+    }
+    const next = parsed.slice(0, MAX_MANUAL_SEEDS);
+    setSeedError(parsed.length >= MAX_MANUAL_SEEDS ? t(lang, 'dailySeedLimit', MAX_MANUAL_SEEDS) : undefined);
+    setSeedDraft('');
+    setTags(next);
+    onSaveSeeds?.(next);
+  };
+  const removeSeed = (seed: string): void => {
+    const next = tags.filter(tag => tag !== seed);
+    setTags(next);
+    setSeedError(undefined);
+    onSaveSeeds?.(next);
+  };
   const [followPending, setFollowPending] = useState<string | null>(null);
   const [followError, setFollowError] = useState<string | undefined>(undefined);
   const [now, setNow] = useState(() => Date.now());
@@ -144,24 +170,53 @@ export const DailyShortlist = ({
         </label>
         {promptError !== undefined && <p className='wa-field__error'>{promptError}</p>}
         {onSaveSeeds !== undefined && (
-          <label className='wa-field'>
-            <span className='wa-field__label'>{t(lang, 'dailySeedsLabel')}</span>
-            <textarea
-              className='wa-input wa-daily__prompt'
-              rows={2}
-              value={seedsDraft}
-              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setSeedsDraft(event.currentTarget.value)}
-              placeholder={t(lang, 'dailySeedsPlaceholder')}
-            />
-          </label>
+          <div className='wa-field'>
+            <label className='wa-field__label' htmlFor='wa-seed-tags'>
+              {t(lang, 'dailySeedsLabel')}
+            </label>
+            <div className='wa-daily__tags'>
+              {tags.map(seed => (
+                <span key={seed} className='wa-daily__tag'>
+                  @{seed}
+                  <button
+                    type='button'
+                    className='wa-daily__tag-remove'
+                    aria-label={t(lang, 'dailySeedRemove', seed)}
+                    onClick={() => removeSeed(seed)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                id='wa-seed-tags'
+                className='wa-daily__tag-input'
+                value={seedDraft}
+                placeholder={t(lang, 'dailySeedsPlaceholder')}
+                autoComplete='off'
+                aria-label={t(lang, 'dailySeedsLabel')}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSeedDraft(event.currentTarget.value)}
+                onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === 'Enter' || event.key === ',' || event.key === ';') {
+                    event.preventDefault();
+                    commitSeeds(seedDraft);
+                  }
+                }}
+                onPaste={(event: React.ClipboardEvent<HTMLInputElement>) => {
+                  const pasted = event.clipboardData?.getData('text') ?? '';
+                  if (/[\s,;]/.test(pasted)) {
+                    event.preventDefault();
+                    commitSeeds(`${seedDraft} ${pasted}`);
+                  }
+                }}
+                onBlur={() => commitSeeds(seedDraft)}
+              />
+            </div>
+            <p className='wa-field__hint'>{t(lang, 'dailySeedsHint')}</p>
+            {seedError !== undefined && <p className='wa-field__error'>{seedError}</p>}
+          </div>
         )}
-        {seedsError !== undefined && <p className='wa-field__error'>{seedsError}</p>}
         <div className='wa-daily__actions'>
-          {onSaveSeeds !== undefined && (
-            <button type='button' className='wa-btn wa-btn--small' onClick={() => onSaveSeeds(seedsDraft)}>
-              {t(lang, 'dailySaveSeeds')}
-            </button>
-          )}
           <button type='button' className='wa-btn wa-btn--small' onClick={() => onSavePrompt(draft)}>
             {t(lang, 'dailySaveFilter')}
           </button>

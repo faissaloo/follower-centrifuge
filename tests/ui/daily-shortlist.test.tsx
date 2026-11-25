@@ -75,7 +75,7 @@ describe('DailyShortlist', () => {
     expect(onFollow).toHaveBeenCalledTimes(1);
   });
 
-  it('saves optional seed accounts while a refresh is running', () => {
+  it('edits seed accounts as tags while a refresh is running', () => {
     const onSaveSeeds = vi.fn();
     render(
       <DailyShortlist
@@ -90,11 +90,10 @@ describe('DailyShortlist', () => {
       />,
     );
     const input = screen.getByLabelText(t('en', 'dailySeedsLabel'));
-    fireEvent.input(input, { target: { value: 'new.seed' } });
-    const save = screen.getByRole('button', { name: t('en', 'dailySaveSeeds') });
-    expect(save.hasAttribute('disabled')).toBe(false);
-    fireEvent.click(save);
-    expect(onSaveSeeds).toHaveBeenCalledWith('new.seed');
+    expect(screen.getByText('@previous.seed')).toBeTruthy();
+    fireEvent.input(input, { target: { value: 'https://www.instagram.com/New.Seed/?hl=en' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onSaveSeeds).toHaveBeenCalledWith(['previous.seed', 'new.seed']);
   });
 
   it('keeps save available while a refresh is running', () => {

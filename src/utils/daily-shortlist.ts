@@ -199,12 +199,46 @@ export function withSeenHistory(
   return pruned;
 }
 
-/** Normalize user-entered seed usernames (commas/whitespace/@ allowed). */
+const RESERVED_SEED_PATHS = new Set([
+  'p', 'reel', 'reels', 'explore', 'accounts', 'about', 'developer', 'legal',
+  'directory', 'stories', 'tv', 'topics', 'locations', 'web', 'api', 'privacy',
+]);
+
+function normalizeSeedToken(rawToken: string): string | null {
+  let token = rawToken.trim().replace(/^[<>"'[\]]+|[<>"'[\]]+$/g, '');
+  if (token === '') {
+    return null;
+  }
+  const instagramUrl = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*instagram\.com/i.test(token);
+  if (instagramUrl) {
+    const candidate = /^https?:\/\//i.test(token) ? token : `https://${token.replace(/^\/\//, '')}`;
+    try {
+      const url = new URL(candidate);
+      if (!/(^|\.)instagram\.com$/i.test(url.hostname)) {
+        return null;
+      }
+      token = url.pathname.split('/').filter(Boolean)[0] ?? '';
+    } catch {
+      return null;
+    }
+  } else if (/^[a-z][a-z0-9+.-]*:\/\//i.test(token)) {
+    return null;
+  } else {
+    token = token.replace(/^@+/, '').replace(/[/?#].*$/, '');
+  }
+  const username = token.replace(/^@+/, '').toLowerCase();
+  if (username === '' || RESERVED_SEED_PATHS.has(username) || !/^[a-z0-9._]{1,30}$/.test(username)) {
+    return null;
+  }
+  return username;
+}
+
+/** Normalize pasted usernames, @handles or instagram profile URLs. */
 export function parseSeedAccounts(raw: string): string[] {
   const seeds: string[] = [];
-  for (const token of raw.split(/[\s,]+/)) {
-    const username = token.trim().replace(/^@/, '').toLowerCase();
-    if (username !== '' && /^[a-z0-9._]{1,30}$/.test(username) && seeds.indexOf(username) === -1) {
+  for (const token of raw.split(/[\s,;]+/)) {
+    const username = normalizeSeedToken(token);
+    if (username !== null && seeds.indexOf(username) === -1) {
       seeds.push(username);
     }
     if (seeds.length >= MAX_MANUAL_SEEDS) {

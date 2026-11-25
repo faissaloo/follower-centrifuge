@@ -58,6 +58,15 @@ describe('daily shortlist persistence', () => {
     expect(isShortlistDue(loaded, state.dueAt)).toBe(true);
   });
 
+  it('normalizes handles and instagram profile links into seeds', () => {
+    expect(
+      parseSeedAccounts(
+        '@Studio.One, https://www.instagram.com/clay.studio/?hl=en\ninstagram.com/third.seed/ https://example.com/nope',
+      ),
+    ).toEqual(['studio.one', 'clay.studio', 'third.seed']);
+    expect(parseSeedAccounts('https://www.instagram.com/p/abc123/')).toEqual([]);
+  });
+
   it('stores optional manual seed accounts across restarts', () => {
     const seeds = parseSeedAccounts('@Studio.One, clay.studio\nstudio.one invalid!');
     expect(seeds).toEqual(['studio.one', 'clay.studio']);

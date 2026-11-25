@@ -615,3 +615,59 @@
     align-items: center;
   }
 }
+
+.iu {
+  .wa-daily__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid $line;
+    background: $surface-sunken;
+  }
+
+  .wa-daily__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.16rem 0.2rem 0.16rem 0.4rem;
+    border: 1px solid $secondary-line;
+    background: $secondary-soft;
+    color: $secondary;
+    font-family: $font-mono !important;
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+  }
+
+  .wa-daily__tag-remove {
+    border: 0;
+    background: transparent;
+    color: $text-muted;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+  }
+
+  .wa-daily__tag-remove:hover {
+    color: $text;
+  }
+
+  .wa-daily__tag-input {
+    flex: 1 1 12rem;
+    min-width: 8rem;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: $text;
+    font-family: $font-ui !important;
+    font-size: 0.78rem;
+    padding: 0.2rem;
+  }
+
+  .wa-daily__tag-input::placeholder {
+    color: $text-faint;
+  }
+}

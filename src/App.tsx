@@ -313,7 +313,6 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   // Read-only Daily 20 shortlist state. This never follows/unfollows anyone.
   const [shortlistPrompt, setShortlistPrompt] = useState(() => loadFilterPrompt());
   const [shortlistSeeds, setShortlistSeeds] = useState<string[]>(() => loadSeedAccounts());
-  const [shortlistSeedsError, setShortlistSeedsError] = useState<string | undefined>(undefined);
   const [shortlistState, setShortlistState] = useState<DailyShortlistState | null>(() => loadShortlistState());
   const [shortlistBusy, setShortlistBusy] = useState(false);
   const [shortlistProgress, setShortlistProgress] = useState<string | undefined>(undefined);
@@ -474,15 +473,10 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
     setShortlistPromptError(undefined);
     setShortlistError(undefined);
   }, []);
-  const handleSaveShortlistSeeds = useCallback((raw: string): void => {
-    const seeds = parseSeedAccounts(raw);
-    if (raw.trim() !== '' && seeds.length === 0) {
-      setShortlistSeedsError('use plain instagram usernames, separated by commas or spaces.');
-      return;
-    }
-    setShortlistSeeds(seeds);
-    saveSeedAccounts(seeds);
-    setShortlistSeedsError(undefined);
+  const handleSaveShortlistSeeds = useCallback((seeds: readonly string[]): void => {
+    const normalized = parseSeedAccounts(seeds.join(' '));
+    setShortlistSeeds(normalized);
+    saveSeedAccounts(normalized);
     setShortlistError(undefined);
   }, []);
   const handleFollowShortlistCandidate = useCallback(
@@ -1329,7 +1323,6 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           error={shortlistError}
           promptError={shortlistPromptError}
           seeds={shortlistSeeds}
-          seedsError={shortlistSeedsError}
           disabledReason={shortlistDisabledReason}
           onSavePrompt={handleSaveShortlistPrompt}
           onSaveSeeds={handleSaveShortlistSeeds}

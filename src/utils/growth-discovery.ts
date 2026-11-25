@@ -136,6 +136,10 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
     } catch {
       // Keep whichever list worked.
     }
+    deps.onProgress?.(
+      'seeds',
+      `@${seedUsername}: ${following.length} following / ${followers.length} followers`,
+    );
     if (following.length === 0 && followers.length === 0) {
       continue;
     }

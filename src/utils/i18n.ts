@@ -447,6 +447,7 @@ const en = {
   dailySource: 'via @%s',
   dailyVia: 'via %s',
   dailyViaMore: '+%s more',
+  dailySourceBreakdown: '%s via seed followings · %s via seed followers',
 
   dailyOpen: 'daily 20 →',
   dailyBack: '← back',
@@ -907,6 +908,7 @@ const es: Record<TranslationKey, string> = {
   dailySource: 'vía @%s',
   dailyVia: 'vía %s',
   dailyViaMore: '+%s más',
+  dailySourceBreakdown: '%s vía follows de semillas · %s vía seguidores de semillas',
 
   dailyOpen: 'daily 20 →',
   dailyBack: '← volver',

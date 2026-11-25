@@ -125,6 +125,8 @@ export const DailyShortlist = ({
   const nextRefresh = state === null ? null : formatRelative(Math.max(dueAt, now), now);
   const lastRefresh = state === null ? null : formatRelative(now, state.refreshedAt);
   const healthy = state !== null && now - state.refreshedAt < SHORTLIST_REFRESH_MS;
+  const viaFollowing = state?.entries.filter(entry => entry.discoveredVia?.some(via => via.endsWith('following'))).length ?? 0;
+  const viaFollowers = state?.entries.filter(entry => entry.discoveredVia?.some(via => via.endsWith('followers'))).length ?? 0;
 
   const handleFollow = async (candidate: ShortlistCandidate): Promise<void> => {
     if (onFollow === undefined || followPending !== null || candidate.followState !== undefined) {
@@ -334,6 +336,12 @@ export const DailyShortlist = ({
         </ol>
       ) : (
         <p className='wa-daily__empty'>{t(lang, 'dailyEmpty')}</p>
+      )}
+
+      {state !== null && state.entries.length > 0 && (
+        <p className='wa-daily__sources'>
+          {t(lang, 'dailySourceBreakdown', viaFollowing, viaFollowers)}
+        </p>
       )}
     </section>
   );

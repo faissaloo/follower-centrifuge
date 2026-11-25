@@ -7,7 +7,7 @@
  * verification logic are covered instead of only mocked away.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { followUser, getCookie, isStillFollowing, removeFollower, unfollowUser } from '../../src/utils/utils';
+import { fetchFriendshipsPage, followUser, getCookie, isStillFollowing, removeFollower, unfollowUser } from '../../src/utils/utils';
 import { INSTAGRAM_UNFOLLOW_DOC_ID, INSTAGRAM_UNFOLLOW_FRIENDLY_NAME } from '../../src/constants/constants';
 
 interface FakeResponseInit {
@@ -255,6 +255,18 @@ describe('follow transport', () => {
     fetchMock.mockResolvedValue(fakeResponse({ json: { status: 'ok', friendship_status: { following: true } } }));
     const result = await followUser({ id: '456', username: 'public.account' }, 'csrf-token');
     expect(result.outcome).toBe('following');
+  });
+});
+
+describe('external friendship lists', () => {
+  it('requests another account follower list with a rank token', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ json: { users: [{ pk_id: '1', username: 'follower_one' }] } }));
+    const page = await fetchFriendshipsPage('followers', undefined, 24, 'seed-account-id');
+    expect(page.users?.[0].username).toBe('follower_one');
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/api/v1/friendships/seed-account-id/followers/');
+    expect(url).toContain('rank_token=');
+    expect(url).toContain('search_surface=follow_list_page');
   });
 });
 

@@ -496,6 +496,18 @@ export class InstagramApiError extends Error {
   }
 }
 
+function randomRankToken(): string {
+  try {
+    const cryptoApi = typeof crypto === 'undefined' ? null : crypto;
+    if (cryptoApi !== null && typeof cryptoApi.randomUUID === 'function') {
+      return cryptoApi.randomUUID();
+    }
+  } catch {
+    // Fall through.
+  }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+}
+
 export async function fetchFriendshipsPage(kind: FriendshipsListKind, maxId?: string, count?: number, userId?: string): Promise<FriendshipsPage> {
   const csrftoken = getCookie('csrftoken') || '';
   const headers: Record<string, string> = {
@@ -508,7 +520,14 @@ export async function fetchFriendshipsPage(kind: FriendshipsListKind, maxId?: st
     headers['X-CSRFToken'] = csrftoken;
   }
 
-  return fetchFriendshipsPageFromUrl(friendshipsUrlGenerator(kind, maxId, count, userId), headers);
+  let url = friendshipsUrlGenerator(kind, maxId, count, userId);
+  const viewerId = getCookie('ds_user_id');
+  // Lists belonging to another account need a rank token on the private web
+  // endpoint; the viewer's own list works without it.
+  if (userId !== undefined && viewerId !== null && userId !== viewerId) {
+    url += `&rank_token=${encodeURIComponent(randomRankToken())}&search_surface=follow_list_page&enable_groups=true`;
+  }
+  return fetchFriendshipsPageFromUrl(url, headers);
 }
 
 async function fetchFriendshipsPageFromUrl(url: string, headers?: Record<string, string>): Promise<FriendshipsPage> {

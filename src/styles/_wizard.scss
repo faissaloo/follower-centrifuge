@@ -671,3 +671,11 @@
     color: $text-faint;
   }
 }
+
+.iu .wa-daily__sources {
+  margin: 0.6rem 0 0;
+  color: $text-faint;
+  font-family: $font-mono !important;
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+}

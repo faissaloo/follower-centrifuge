@@ -32,6 +32,7 @@ describe('public GitHub Pages landing page', () => {
     expect(html).toContain('typesafe jev');
     expect(html).toContain('deepseek');
     expect(html).toContain('dry run first');
+    expect(html).toContain('daily 20');
   });
 
   it('keeps the build-injection markers and copy control working', () => {

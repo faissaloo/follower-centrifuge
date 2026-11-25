@@ -13,6 +13,7 @@ import {
 import { AuditCandidate, AuditFilter, AuditTab, DEFAULT_AUDIT_FILTER, FetchListFn, FetchListUser } from './model/audit';
 import { GenderCategory } from './model/gender';
 import { DeepSeekConfig, HAS_EMBEDDED_DEEPSEEK_KEY, HAS_EMBEDDED_TYPESAFE_KEY } from './model/deepseek-config';
+import { DailyShortlistState, SHORTLIST_STATE_VERSION } from './model/growth';
 import { probeRelayConnection, relayUrlCandidates, relayWillBeUsed } from './utils/classifier-relay';
 import { UnfollowPlan } from './model/action-plan';
 import { AppState, ExecutingState, ReviewState, ScanningState } from './model/state';
@@ -23,6 +24,18 @@ import { getCandidatesForDisplay } from './utils/audit-display';
 import { loadTargetCategory, saveTargetCategory } from './utils/audit-preferences';
 import { clearAccountListCache, createCachedListFetch, loadAccountListCache, saveAccountListCache } from './utils/account-list-cache';
 import { buildUnfollowPlan } from './utils/action-plan';
+import { discoverGrowthCandidates } from './utils/growth-discovery';
+import { filterShortlistCandidates } from './utils/profile-filter';
+import {
+  isShortlistDue,
+  loadFilterPrompt,
+  loadShortlistState,
+  nextDueAt,
+  saveFilterPrompt,
+  saveShortlistState,
+  withSeenHistory,
+} from './utils/daily-shortlist';
+import { validateFilterPrompt } from './utils/filter-prompt';
 import { estimateExecutionRemainingMs, executeUnfollowPlan } from './utils/unfollow-executor';
 import { loadDeepSeekConfig, saveDeepSeekConfig } from './utils/deepseek-settings';
 import {
@@ -36,11 +49,12 @@ import { createFriendshipsListFetcher } from './utils/friendships-list';
 import { getInitialLanguage, Language, saveLanguage, t } from './utils/i18n';
 import { loadReviewCache, ReviewCacheRecord, saveReviewCache } from './utils/review-cache';
 import { loadTimings, loadWhitelist, saveTimings, saveWhitelist } from './utils/whitelist-manager';
-import { copyListToClipboard, exportToCSV, exportToJSON, fetchFriendshipsPage, getCookie, isStillFollower, isStillFollowing, removeFollower, sleep, unfollowUser } from './utils/utils';
+import { copyListToClipboard, exportToCSV, exportToJSON, fetchFriendshipsPage, fetchUserProfileInfo, getCookie, isStillFollower, isStillFollowing, removeFollower, sleep, unfollowUser } from './utils/utils';
 import { buildWhitelistProtection, isProtectedByWhitelist, withoutProtectionFor } from './utils/whitelist-match';
 import { runAccountAudit } from './utils/account-audit';
 
 import { NukeWizard } from './components/NukeWizard';
+import { DailyShortlist } from './components/DailyShortlist';
 import { ScanningScreen } from './components/ScanningScreen';
 import { ClassifierAttribution, ReviewScreen } from './components/ReviewScreen';
 import { ExecutingScreen } from './components/ExecutingScreen';
@@ -284,6 +298,134 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   const abortScanRef = useRef(false);
   const abortExecutionRef = useRef(false);
   const lastReviewRef = useRef<ReviewState | null>(null);
+
+  // Read-only Daily 20 shortlist state. This never follows/unfollows anyone.
+  const [shortlistPrompt, setShortlistPrompt] = useState(() => loadFilterPrompt());
+  const [shortlistState, setShortlistState] = useState<DailyShortlistState | null>(() => loadShortlistState());
+  const [shortlistBusy, setShortlistBusy] = useState(false);
+  const [shortlistProgress, setShortlistProgress] = useState<string | undefined>(undefined);
+  const [shortlistError, setShortlistError] = useState<string | undefined>(undefined);
+  const [shortlistPromptError, setShortlistPromptError] = useState<string | undefined>(undefined);
+  const shortlistBusyRef = useRef(false);
+  const shortlistAttemptAtRef = useRef(0);
+  const shortlistKeysReady =
+    isTypeSafeConfigured(deepSeekConfig) ||
+    (deepSeekConfig.mode === 'direct' && isDeepSeekConfigured(deepSeekConfig));
+  const shortlistDisabledReason = demoMode
+    ? 'open the script on instagram to build the daily shortlist'
+    : !shortlistKeysReady
+      ? 'add TypeSafe or DeepSeek keys first'
+      : relayRequired && relayCheck.status !== 'ok'
+        ? 'waiting for the local relay'
+        : undefined;
+  const runShortlistRefresh = useCallback(async (manual = false): Promise<void> => {
+    if (shortlistBusyRef.current) {
+      return;
+    }
+    if (shortlistDisabledReason !== undefined) {
+      setShortlistError(shortlistDisabledReason);
+      return;
+    }
+    if (!manual) {
+      const now = Date.now();
+      if (!isShortlistDue(shortlistState, now)) {
+        return;
+      }
+      if (now - shortlistAttemptAtRef.current < 5 * 60 * 1000) {
+        return;
+      }
+      shortlistAttemptAtRef.current = now;
+    }
+    const validation = validateFilterPrompt(shortlistPrompt);
+    if (!validation.ok) {
+      setShortlistPromptError(validation.error);
+      return;
+    }
+    shortlistBusyRef.current = true;
+    setShortlistBusy(true);
+    setShortlistError(undefined);
+    setShortlistPromptError(undefined);
+    setShortlistProgress(undefined);
+    const knownFollowing = new Set<string>();
+    const review = lastReviewRef.current;
+    if (review !== null) {
+      for (const candidate of review.candidates) {
+        if (candidate.relationship === 'following' || candidate.relationship === 'mutual') {
+          knownFollowing.add(candidate.user.username.toLowerCase());
+        }
+      }
+    }
+    try {
+      const candidates = await discoverGrowthCandidates({
+        fetchViewerFollowing: async () => (await fetchFriendshipsPage('following', undefined, 50)).users ?? [],
+        fetchSeedFollowing: async seedId =>
+          (await fetchFriendshipsPage('following', undefined, 24, seedId)).users ?? [],
+        fetchProfile: fetchUserProfileInfo,
+        sleep: ms => sleep(ms),
+        random: () => Math.random(),
+        now: () => Date.now(),
+        knownFollowing,
+        seen: shortlistState?.seen,
+        onProgress: (_stage, message) => setShortlistProgress(message),
+      });
+      const entries = await filterShortlistCandidates(
+        candidates,
+        validation.prompt,
+        deepSeekConfig,
+        { hostname: location.hostname },
+      );
+      const refreshedAt = Date.now();
+      const nextState: DailyShortlistState = {
+        version: SHORTLIST_STATE_VERSION,
+        refreshedAt,
+        dueAt: nextDueAt(refreshedAt),
+        filterPrompt: validation.prompt,
+        entries,
+        seen: withSeenHistory(shortlistState?.seen ?? {}, entries, refreshedAt),
+      };
+      saveShortlistState(nextState);
+      setShortlistState(nextState);
+    } catch (error) {
+      setShortlistError(error instanceof Error ? error.message : 'shortlist refresh failed');
+    } finally {
+      shortlistBusyRef.current = false;
+      setShortlistBusy(false);
+      setShortlistProgress(undefined);
+    }
+  }, [
+    deepSeekConfig,
+    shortlistDisabledReason,
+    shortlistPrompt,
+    shortlistState,
+  ]);
+  const handleSaveShortlistPrompt = useCallback((prompt: string): void => {
+    const validation = validateFilterPrompt(prompt);
+    if (!validation.ok) {
+      setShortlistPromptError(validation.error);
+      return;
+    }
+    setShortlistPrompt(validation.prompt);
+    saveFilterPrompt(validation.prompt);
+    setShortlistPromptError(undefined);
+    setShortlistError(undefined);
+  }, []);
+  useEffect(() => {
+    if (demoMode || shortlistDisabledReason !== undefined) {
+      return undefined;
+    }
+    const check = (): void => {
+      if (state.status === 'scanning' || state.status === 'executing') {
+        return;
+      }
+      if (isShortlistDue(shortlistState, Date.now())) {
+        void runShortlistRefresh(false);
+      }
+    };
+    check();
+    const timer = setInterval(check, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [demoMode, shortlistDisabledReason, shortlistState, state.status, runShortlistRefresh]);
+
   const autoLoadedRef = useRef(false);
 
   const langRef = useRef(lang);
@@ -1067,6 +1209,7 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   switch (state.status) {
     case 'initial':
       markup = (
+        <>
         <NukeWizard
           lang={lang}
           onNuke={startScan}
@@ -1087,6 +1230,21 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
           scanDisabled={!demoMode && getCookie('ds_user_id') === null}
           scanDisabledReason={t(lang, 'scanFailedFollowing')}
         />
+        <DailyShortlist
+            lang={lang}
+            prompt={shortlistPrompt}
+            state={shortlistState}
+            busy={shortlistBusy}
+            progress={shortlistProgress}
+            error={shortlistError}
+            promptError={shortlistPromptError}
+            disabledReason={shortlistDisabledReason}
+            onSavePrompt={handleSaveShortlistPrompt}
+            onRefresh={() => {
+              void runShortlistRefresh(true);
+            }}
+          />
+        </>
       );
       break;
     case 'scanning':

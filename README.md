@@ -36,6 +36,19 @@ The review is where the tool earns its keep: target tabs (including the **follow
 
 ---
 
+## 🔭 Daily 20 — read-only growth shortlist
+
+The launch screen also has a **Daily 20** panel: up to 20 public accounts linked to the people you already follow, refreshed automatically at most once every **24 hours** while the page stays open. It is **read-only** — the panel opens profile links for you; it never follows, unfollows, likes or DMs anyone.
+
+- **Discovery:** samples up to 6 accounts you follow, reads one page of their following lists (up to 24 each), de-duplicates against accounts you follow and the last 30 days, then reads at most 50 public profiles. Requests use randomised 0.9–3.6 s gaps and hard daily caps.
+- **Filter prompt:** stored in `localStorage` so it survives a script restart. It's for interests, content style and account quality only — sensitive-trait filtering (religion, ethnicity, gender, sexuality, health, nationality, age) is rejected by a guard. The prompt is scored by Jev first, with DeepSeek as fallback.
+- **Match strength:** every candidate shows a **strong / good / maybe / weak** badge and percentage, plus which of your follows surfaced it.
+- **Further out, not too close:** candidates surfaced by more of your sampled follows are treated as closer to your network; candidates found through only one follow get a distance boost in the ranking. Strong matches still dominate the combined ranking.
+- **Auto refresh:** a one-minute check notices when 24 hours have passed and refreshes in the background unless a scan or live run is in progress. No background service is involved — the tab must stay open. The first launch with no shortlist starts immediately once classifier keys and the relay are ready.
+- **Manual only:** the shortlist displays links and bios; whether to follow anyone remains your call.
+
+---
+
 ## 🔒 Safety model
 
 | Guarantee | How it is enforced |
@@ -130,7 +143,7 @@ Open `http://localhost:8080/?preview=review`, press **COPY**, and paste the scri
 ## 🧪 Verification & tests
 
 ```bash
-npm test                 # 859 tests / 51 files (unit, component, integration, safety)
+npm test                 # 870 tests / 56 files (unit, component, integration, safety)
 npm run test:coverage    # coverage thresholds
 npm run verify           # typecheck app + tests, lint, tests
 npm run check:classifier # MANUAL real-API check (synthetic names only; uses .typesafe-key/.deepseek-key)
@@ -162,9 +175,13 @@ src/
     review-cache.ts      # viewer-scoped, expiring review cache
     deepseek-settings.ts # provider/keys persistence (session-only; embedded-key merge)
     audit-preferences.ts # persisted category preference
+    growth-discovery.ts  # bounded 2-hop candidate discovery
+    profile-filter.ts    # Jev/DeepSeek filter scoring
+    daily-shortlist.ts   # prompt/state localStorage + 24h due logic
     i18n.ts              # EN/ES
   components/
     NukeWizard.tsx       # wizard step 1: pick the category to nuke
+    DailyShortlist.tsx   # read-only Daily 20 recommendations
     WizardSteps.tsx      # pick -> dry run -> nuke step indicator
     Centrifuge.tsx       # decorative enrichment-cascade animation
   preview/demo-data.ts   # synthetic offline dataset
@@ -186,6 +203,7 @@ tests/                    # automated tests (network-free)
 after installing. `npm run trust:relay` re-installs it manually (e.g. after a new
 profile is created). Without the relay, the review shows an actionable “classifier couldnt reach the provider” banner instead of silently leaving accounts unclassified.
 - **Cancelling a scan stops between batches**; an in-flight request is allowed to finish (all requests are timeout-bounded). Partial results are kept for an incomplete review where live unfollowing is locked.
+- **The Daily 20 shortlist is read-only and best-effort.** It samples a small slice of the graph, filters only public profile text, and can miss good accounts or surface stale ones; it never performs a follow. The tab must stay open for automatic refreshes.
 - **Live actions are your responsibility.** Only act on accounts you have reviewed; automate at your own risk and respect Instagram's Terms of Use. This tool is not affiliated with Instagram, TypeSafe AI or DeepSeek.
 
 ## 📄 License

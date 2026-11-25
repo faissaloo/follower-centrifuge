@@ -481,6 +481,60 @@ async function fetchFriendshipsPageFromUrl(url: string, headers?: Record<string,
   return data as FriendshipsPage;
 }
 
+export interface ProfileInfo {
+  readonly id: string;
+  readonly username: string;
+  readonly fullName: string;
+  readonly biography: string;
+  readonly profilePicUrl: string;
+  readonly isPrivate: boolean;
+  readonly isVerified: boolean;
+  readonly followerCount: number;
+  readonly followingCount: number;
+}
+
+/**
+ * Read one public profile. Used only by the read-only Daily 20 shortlist;
+ * the caller is responsible for pacing these lookups.
+ */
+export async function fetchUserProfileInfo(username: string): Promise<ProfileInfo> {
+  const csrftoken = getCookie('csrftoken') || '';
+  const headers: Record<string, string> = {
+    'X-IG-App-ID': INSTAGRAM_WEB_APP_ID,
+    'X-ASBD-ID': INSTAGRAM_ASBD_ID,
+    'X-Requested-With': 'XMLHttpRequest',
+    'Accept': '*/*',
+  };
+  if (csrftoken) {
+    headers['X-CSRFToken'] = csrftoken;
+  }
+  const url = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+  const response = await fetchWithTimeout(url, { credentials: 'same-origin', headers });
+  if (!response.ok) {
+    throw new InstagramApiError(response.status, `Instagram returned HTTP ${response.status} for a profile lookup`);
+  }
+  const payload = (await response.json()) as { data?: { user?: Record<string, unknown> } };
+  const user = payload.data?.user;
+  if (user === undefined) {
+    throw new InstagramApiError(response.status, 'Instagram returned no profile data');
+  }
+  const edgeFollowedBy = user.edge_followed_by as { count?: unknown } | undefined;
+  const edgeFollow = user.edge_follow as { count?: unknown } | undefined;
+  const numberOrZero = (value: unknown): number =>
+    typeof value === 'number' && isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  return {
+    id: String(user.id ?? user.pk ?? username),
+    username: typeof user.username === 'string' ? user.username : username,
+    fullName: typeof user.full_name === 'string' ? user.full_name : '',
+    biography: typeof user.biography === 'string' ? user.biography : '',
+    profilePicUrl: typeof user.profile_pic_url === 'string' ? user.profile_pic_url : '',
+    isPrivate: user.is_private === true,
+    isVerified: user.is_verified === true,
+    followerCount: numberOrZero(edgeFollowedBy?.count),
+    followingCount: numberOrZero(edgeFollow?.count),
+  };
+}
+
 export function rawFriendshipUserToUserNode(raw: RawFriendshipUser, followsViewer: boolean): UserNode {
   return {
     id: String(raw.pk_id ?? raw.pk ?? raw.username ?? ''),

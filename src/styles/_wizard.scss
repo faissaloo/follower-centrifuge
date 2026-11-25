@@ -323,3 +323,167 @@
     margin-top: 0.8rem;
   }
 }
+
+.iu {
+  .wa-daily {
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto 2.4rem;
+    padding: 1.2rem 1.35rem;
+  }
+
+  .wa-daily__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .wa-daily__intro {
+    margin: 0.35rem 0 0;
+    color: $text-muted;
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .wa-daily__pill {
+    flex: none;
+    border: 1px solid $secondary-line;
+    background: $secondary-soft;
+    color: $secondary;
+    padding: 0.22rem 0.45rem;
+    font-family: $font-mono !important;
+    font-size: 0.54rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .wa-daily__pill--due {
+    border-color: $accent-line;
+    background: $accent-soft;
+    color: $accent;
+  }
+
+  .wa-daily__filter {
+    border-top: 1px dashed rgba($text, 0.1);
+    padding-top: 0.85rem;
+  }
+
+  .wa-daily__prompt {
+    resize: vertical;
+    min-height: 3.2rem;
+  }
+
+  .wa-daily__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.7rem;
+  }
+
+  .wa-daily__status {
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.58rem;
+    line-height: 1.5;
+  }
+
+  .wa-daily__list {
+    list-style: none;
+    margin: 0.9rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+  }
+
+  .wa-daily__item {
+    display: grid;
+    grid-template-columns: minmax(8rem, 1fr) minmax(0, 1.4fr) auto auto;
+    gap: 0.45rem 0.8rem;
+    align-items: baseline;
+    padding: 0.5rem 0;
+    border-top: 1px solid rgba($text, 0.065);
+    font-size: 0.8rem;
+  }
+
+  .wa-daily__user {
+    color: $text;
+    font-family: $font-mono !important;
+    font-size: 0.7rem;
+    text-decoration: none;
+  }
+
+  .wa-daily__name {
+    color: $text-muted;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wa-daily__strength {
+    justify-self: end;
+    padding: 0.12rem 0.38rem;
+    border: 1px solid $line;
+    color: $text-muted;
+    font-family: $font-mono !important;
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .wa-daily__strength--strong {
+    border-color: $secondary-line;
+    background: $secondary-soft;
+    color: $secondary;
+  }
+
+  .wa-daily__strength--good {
+    border-color: $accent-line;
+    background: $accent-soft;
+    color: $accent;
+  }
+
+  .wa-daily__score,
+  .wa-daily__source,
+  .wa-daily__distance {
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.55rem;
+    white-space: nowrap;
+  }
+
+  .wa-daily__distance--far {
+    color: $secondary;
+  }
+
+  .wa-daily__bio {
+    grid-column: 1 / -1;
+    color: $text-muted;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .wa-daily__empty {
+    margin: 0.9rem 0 0;
+    color: $text-faint;
+    font-family: $font-mono !important;
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .iu .wa-daily__item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .iu .wa-daily__name {
+    grid-column: 1 / -1;
+  }
+}

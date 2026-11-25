@@ -36,6 +36,7 @@ import {
   withSeenHistory,
 } from './utils/daily-shortlist';
 import { validateFilterPrompt } from './utils/filter-prompt';
+import { createCachedProfileFetcher } from './utils/growth-profile-cache';
 import { estimateExecutionRemainingMs, executeUnfollowPlan } from './utils/unfollow-executor';
 import { loadDeepSeekConfig, saveDeepSeekConfig } from './utils/deepseek-settings';
 import {
@@ -308,13 +309,11 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
   const [shortlistPromptError, setShortlistPromptError] = useState<string | undefined>(undefined);
   const shortlistBusyRef = useRef(false);
   const shortlistAttemptAtRef = useRef(0);
-  const shortlistKeysReady =
-    isTypeSafeConfigured(deepSeekConfig) ||
-    (deepSeekConfig.mode === 'direct' && isDeepSeekConfigured(deepSeekConfig));
+  const shortlistKeysReady = isTypeSafeConfigured(deepSeekConfig);
   const shortlistDisabledReason = demoMode
     ? 'open the script on instagram to build the daily shortlist'
     : !shortlistKeysReady
-      ? 'add TypeSafe or DeepSeek keys first'
+      ? 'add a TypeSafe Jev key first'
       : relayRequired && relayCheck.status !== 'ok'
         ? 'waiting for the local relay'
         : undefined;
@@ -356,11 +355,12 @@ export const App = ({ demoMode = false, autoLoadDemo = false }: AppProps) => {
       }
     }
     try {
+      const cachedProfileFetch = createCachedProfileFetcher(fetchUserProfileInfo);
       const candidates = await discoverGrowthCandidates({
         fetchViewerFollowing: async () => (await fetchFriendshipsPage('following', undefined, 50)).users ?? [],
         fetchSeedFollowing: async seedId =>
           (await fetchFriendshipsPage('following', undefined, 24, seedId)).users ?? [],
-        fetchProfile: fetchUserProfileInfo,
+        fetchProfile: cachedProfileFetch,
         sleep: ms => sleep(ms),
         random: () => Math.random(),
         now: () => Date.now(),

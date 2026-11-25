@@ -51,6 +51,19 @@ describe('DailyShortlist', () => {
     expect(screen.getByText(t('en', 'dailyReadOnly'))).toBeTruthy();
   });
 
+  it('keeps save available while a refresh is running', () => {
+    const onSavePrompt = vi.fn();
+    render(
+      <DailyShortlist lang='en' prompt='ceramics' state={state} busy onSavePrompt={onSavePrompt} onRefresh={vi.fn()} />,
+    );
+    const input = screen.getByLabelText(t('en', 'dailyFilterLabel'));
+    fireEvent.input(input, { target: { value: 'process videos' } });
+    const save = screen.getByRole('button', { name: t('en', 'dailySaveFilter') });
+    expect(save.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(save);
+    expect(onSavePrompt).toHaveBeenCalledWith('process videos');
+  });
+
   it('saves the filter prompt and reloads suggestions manually', () => {
     const onSavePrompt = vi.fn();
     const onRefresh = vi.fn();

@@ -40,10 +40,12 @@ The review is where the tool earns its keep: target tabs (including the **follow
 
 The launch screen also has a **Daily 20** panel: up to 20 public accounts linked to the people you already follow, refreshed automatically at most once every **24 hours** while the page stays open. It is **read-only** — the panel opens profile links for you; it never follows, unfollows, likes or DMs anyone.
 
-- **Discovery:** samples up to 6 accounts you follow, reads one page of their following lists (up to 24 each), de-duplicates against accounts you follow and the last 30 days, then reads at most 50 public profiles. Requests use randomised 0.9–3.6 s gaps and hard daily caps.
-- **Filter prompt:** stored in `localStorage` so it survives a script restart. It's for interests, content style and account quality only — sensitive-trait filtering (religion, ethnicity, gender, sexuality, health, nationality, age) is rejected by a guard. The prompt is scored by Jev first, with DeepSeek as fallback.
+- **Discovery:** samples up to 6 accounts you follow, reads one page of their following lists (up to 24 each), de-duplicates against accounts you follow and the last 30 days, then reads at most 50 public profiles. If a profile read fails, the following-list row is kept so one bad endpoint doesn't empty the whole shortlist. Requests use randomised 0.9–3.6 s gaps and hard daily caps.
+- **Profile cache:** successful public profile reads are cached for 7 days; profiles confirmed unavailable (403/404/410) are skipped for 24 hours. Private accounts are included — their raw following-list data is used when the public profile read is unavailable.
+- **Filter prompt:** stored in `localStorage` so it survives a script restart. It's for interests, content style and account quality only — sensitive-trait filtering (religion, ethnicity, gender, sexuality, health, nationality, age) is rejected by a guard. The prompt is scored by Jev only.
 - **Match strength:** every candidate shows a **strong / good / maybe / weak** badge and percentage, plus which of your follows surfaced it.
-- **Further out, not too close:** candidates surfaced by more of your sampled follows are treated as closer to your network; candidates found through only one follow get a distance boost in the ranking. Strong matches still dominate the combined ranking.
+- **Further out, not too close:** candidates surfaced by more of your sampled follows are treated as closer to your network; candidates found through only one follow get a distance boost in the ranking. **Private accounts get a small extra boost** because a manual follow request is a higher-yield outcome; strong filter matches still dominate.
+- **Read-only:** the shortlist only displays links and bios. It sends no follow request — you decide and approve that in the Instagram app.
 - **Auto refresh:** a one-minute check notices when 24 hours have passed and refreshes in the background unless a scan or live run is in progress. No background service is involved — the tab must stay open. The first launch with no shortlist starts immediately once classifier keys and the relay are ready.
 - **Manual only:** the shortlist displays links and bios; whether to follow anyone remains your call.
 
@@ -143,7 +145,7 @@ Open `http://localhost:8080/?preview=review`, press **COPY**, and paste the scri
 ## 🧪 Verification & tests
 
 ```bash
-npm test                 # 870 tests / 56 files (unit, component, integration, safety)
+npm test                 # 876 tests / 57 files (unit, component, integration, safety)
 npm run test:coverage    # coverage thresholds
 npm run verify           # typecheck app + tests, lint, tests
 npm run check:classifier # MANUAL real-API check (synthetic names only; uses .typesafe-key/.deepseek-key)

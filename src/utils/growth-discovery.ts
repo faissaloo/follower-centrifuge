@@ -181,11 +181,14 @@ export async function discoverGrowthCandidates(deps: GrowthDiscoveryDeps): Promi
         sourceCount: candidate.sourceCount ?? 1,
       });
     } catch {
-      // Private/deleted/blocked accounts simply don't make the shortlist.
+      // Profile lookups fail for private/deleted/rate-limited accounts. The
+      // following-list row still gives us enough to review the account, so keep
+      // it instead of dropping the whole shortlist.
+      enriched.push(candidate);
     }
   }
   if (enriched.length === 0) {
-    throw new GrowthDiscoveryError('could not read any public profiles today');
+    throw new GrowthDiscoveryError('no candidate profiles were found today');
   }
   return enriched;
 }

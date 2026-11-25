@@ -7,6 +7,22 @@ function user(id: string, username: string): FetchListUser {
 }
 
 describe('growth discovery', () => {
+  it('keeps raw candidates when profile reads all fail', async () => {
+    const result = await discoverGrowthCandidates({
+      fetchViewerFollowing: async () => [user('seed1', 'seed_one')],
+      fetchSeedFollowing: async () => [user('c1', 'private_candidate'), user('c2', 'public_candidate')],
+      fetchProfile: async () => {
+        throw new Error('profile endpoint down');
+      },
+      sleep: async () => undefined,
+      random: () => 0.5,
+      now: () => 1_000_000,
+    });
+    expect(result).toHaveLength(2);
+    expect(result.every(candidate => candidate.biography === '')).toBe(true);
+    expect(result.map(candidate => candidate.username)).toContain('private_candidate');
+  });
+
   it('samples follows, skips known/seen accounts, and counts repeated sources', async () => {
     const profile = (username: string) => ({
       id: `id-${username}`,

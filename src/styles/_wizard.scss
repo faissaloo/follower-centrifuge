@@ -446,6 +446,16 @@
     color: $accent;
   }
 
+  .wa-daily__badge {
+    border: 1px solid $line;
+    color: $text-muted;
+    font-family: $font-mono !important;
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.08rem 0.3rem;
+  }
+
   .wa-daily__score,
   .wa-daily__source,
   .wa-daily__distance {

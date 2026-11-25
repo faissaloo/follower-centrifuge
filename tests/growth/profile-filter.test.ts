@@ -67,6 +67,27 @@ describe('profile filter scoring', () => {
     expect(farOut?.networkDistance).toBe(1);
   });
 
+  it('gives private profiles a modest ranking boost', async () => {
+    const publicCandidate = { ...candidate(1, 0.6, 1), isPrivate: false };
+    const privateCandidate = { ...candidate(2, 0.6, 1), isPrivate: true };
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { questions: Record<string, unknown> };
+      const answers: Record<string, unknown> = {};
+      for (const key of Object.keys(body.questions)) {
+        answers[key] = { type: 'choice', choice: 'match', confidence: 0.6, probabilities: { match: 0.6, maybe: 0.1, no: 0.3 } };
+      }
+      return new Response(JSON.stringify({ model: 'jev-test', answers, usage: { input_tokens: 1, output_tokens: 1 } }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const result = await filterShortlistCandidates([publicCandidate, privateCandidate], 'ceramics', config(), { fetchImpl });
+    expect(result[0].username).toBe('candidate_2');
+  });
+
+  it('requires Jev and does not silently fall back to DeepSeek', async () => {
+    await expect(
+      filterShortlistCandidates([candidate(1, 0.8, 1)], 'ceramics', { ...config(), typesafeApiKey: '' }, {}),
+    ).rejects.toThrow(/TypeSafe Jev/);
+  });
+
   it('refuses sensitive-trait filter prompts before scoring', async () => {
     await expect(
       filterShortlistCandidates([candidate(1, 0.8, 1)], 'Muslim women who post art', config(), {}),

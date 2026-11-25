@@ -91,10 +91,9 @@ export const DailyShortlist = ({
             placeholder={t(lang, 'dailyFilterPlaceholder')}
           />
         </label>
-        <p className='wa-field__hint'>{t(lang, 'dailyFilterHint')}</p>
         {promptError !== undefined && <p className='wa-field__error'>{promptError}</p>}
         <div className='wa-daily__actions'>
-          <button type='button' className='wa-btn wa-btn--small' onClick={() => onSavePrompt(draft)} disabled={busy}>
+          <button type='button' className='wa-btn wa-btn--small' onClick={() => onSavePrompt(draft)}>
             {t(lang, 'dailySaveFilter')}
           </button>
           <button
@@ -144,6 +143,8 @@ export const DailyShortlist = ({
               {entry.sourceUsername !== undefined && (
                 <span className='wa-daily__source'>{t(lang, 'dailySource', entry.sourceUsername)}</span>
               )}
+              {entry.isPrivate && <span className='wa-daily__badge'>{t(lang, 'privateBadge')}</span>}
+              {entry.isVerified && <span className='wa-daily__badge'>{t(lang, 'verifiedBadge')}</span>}
               {(entry.sourceCount ?? 1) === 1 ? (
                 <span className='wa-daily__distance wa-daily__distance--far'>{t(lang, 'dailyFar')}</span>
               ) : (
